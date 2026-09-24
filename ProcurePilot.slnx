@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ProcurePilot.Application/ProcurePilot.Application.csproj" />
+    <Project Path="src/ProcurePilot.Domain/ProcurePilot.Domain.csproj" />
+    <Project Path="src/ProcurePilot.Infrastructure/ProcurePilot.Infrastructure.csproj" />
+    <Project Path="src/ProcurePilot.Web/ProcurePilot.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ProcurePilot.E2ETests/ProcurePilot.E2ETests.csproj" />
+    <Project Path="tests/ProcurePilot.IntegrationTests/ProcurePilot.IntegrationTests.csproj" />
+    <Project Path="tests/ProcurePilot.UnitTests/ProcurePilot.UnitTests.csproj" />
+  </Folder>
+  <Project Path="ProcurePilot.AppHost/ProcurePilot.AppHost.csproj" />
+  <Project Path="ProcurePilot.ServiceDefaults/ProcurePilot.ServiceDefaults.csproj" />
+</Solution>

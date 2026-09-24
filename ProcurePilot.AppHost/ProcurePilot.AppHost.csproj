@@ -1,0 +1,16 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.5.4">
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\ProcurePilot.Web\ProcurePilot.Web.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>3bc8cf32-e57d-4439-b5bc-33db8119f382</UserSecretsId>
+  </PropertyGroup>
+
+</Project>
