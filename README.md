@@ -17,6 +17,10 @@ dotnet build ProcurePilot.slnx --no-restore
 dotnet test ProcurePilot.slnx --no-build
 ```
 
+## Continuous integration
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. It restores the SDK and repository-local tools, builds the complete solution in Release mode, and runs the full test suite. The GitHub-hosted Linux runner uses Docker for the real PostgreSQL integration test orchestrated by Aspire.
+
 ## Run locally
 
 ```powershell
