@@ -1,7 +1,14 @@
 ﻿@page "/"
 
+@attribute [Authorize(Policy = AuthorizationPolicies.ActiveTenant)]
+
 <PageTitle>ProcurePilot</PageTitle>
 
 <h1>ProcurePilot</h1>
 
-<p>The engineering foundation is ready.</p>
+<AuthorizeView>
+    <Authorized Context="authenticationState">
+        <p>Signed in as @authenticationState.User.Identity?.Name.</p>
+        <p>The secure tenant foundation is ready.</p>
+    </Authorized>
+</AuthorizeView>

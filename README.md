@@ -31,6 +31,21 @@ The AppHost starts PostgreSQL in Docker, applies pending EF Core migrations thro
 
 The AppHost runs the web resource with its HTTP launch profile so orchestration and CI do not depend on trusting a machine-specific development certificate. HTTPS remains available when the Web project is launched directly with its HTTPS profile.
 
+## Provision a local login
+
+ProcurePilot has no public registration flow. Configure the first local tenant administrator through AppHost user secrets:
+
+```powershell
+dotnet user-secrets set --project ProcurePilot.AppHost "Identity:Bootstrap:TenantName" "Local Demo"
+dotnet user-secrets set --project ProcurePilot.AppHost "Identity:Bootstrap:Email" "admin@local.test"
+dotnet user-secrets set --project ProcurePilot.AppHost "Identity:Bootstrap:Password" "choose-a-strong-local-password"
+dotnet user-secrets set --project ProcurePilot.AppHost "Identity:Bootstrap:DisplayName" "Local Admin"
+```
+
+Start the AppHost normally. The explicit `migrations` resource applies the schema and idempotently creates the configured tenant, user, and `Administrator` role before `web` starts. If all four values are absent, no account is created. A partial configuration fails fast. No credentials are stored in the repository.
+
+Open `/account/login`. The application uses an HttpOnly Identity cookie, antiforgery protection, and a server-generated tenant claim. Production cookies are always marked Secure; local Aspire HTTP uses the development exception required by the local launch profile.
+
 ## Create a migration
 
 Run this only after deliberately changing the EF Core model:
@@ -46,4 +61,4 @@ Commit the generated migration and model snapshot. Starting the AppHost then app
 
 ## Current scope
 
-This repository contains the Sprint 0 engineering foundation and local PostgreSQL persistence plumbing. Identity, tenant resolution, CI, and business capabilities are intentionally not implemented yet.
+This repository contains the Sprint 0 engineering foundation, local PostgreSQL persistence, CI, and the Identity/tenant-isolation baseline. Business capabilities are intentionally not implemented yet.

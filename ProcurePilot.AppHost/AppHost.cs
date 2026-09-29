@@ -9,6 +9,22 @@ var migrations = builder.AddProject<Projects.ProcurePilot_Web>("migrations", lau
     .WaitFor(database)
     .WithArgs("--migrate");
 
+var bootstrapSettings = new Dictionary<string, string>
+{
+    ["Identity:Bootstrap:TenantName"] = "Identity__Bootstrap__TenantName",
+    ["Identity:Bootstrap:Email"] = "Identity__Bootstrap__Email",
+    ["Identity:Bootstrap:Password"] = "Identity__Bootstrap__Password",
+    ["Identity:Bootstrap:DisplayName"] = "Identity__Bootstrap__DisplayName"
+};
+
+foreach (var (configurationKey, environmentVariable) in bootstrapSettings)
+{
+    if (builder.Configuration[configurationKey] is { Length: > 0 } value)
+    {
+        migrations.WithEnvironment(environmentVariable, value);
+    }
+}
+
 builder.AddProject<Projects.ProcurePilot_Web>("web", launchProfileName: "http")
     .WithReference(database)
     .WaitForCompletion(migrations)

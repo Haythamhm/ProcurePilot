@@ -1,0 +1,38 @@
+@page "/account/login"
+@model ProcurePilot.Web.Pages.Account.LoginModel
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign in - ProcurePilot</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/app.css" />
+</head>
+<body>
+    <main class="container py-5" style="max-width: 32rem">
+        <h1 class="mb-3">Sign in to ProcurePilot</h1>
+        <p class="text-body-secondary">Use the account provisioned for your organization.</p>
+        <form method="post">
+            <input asp-for="ReturnUrl" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+            <div class="mb-3">
+                <label asp-for="Input.Email" class="form-label"></label>
+                <input asp-for="Input.Email" class="form-control" autocomplete="username" autofocus />
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Input.Password" class="form-label"></label>
+                <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+            <div class="form-check mb-3">
+                <input asp-for="Input.RememberMe" class="form-check-input" />
+                <label asp-for="Input.RememberMe" class="form-check-label"></label>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Sign in</button>
+        </form>
+    </main>
+</body>
+</html>

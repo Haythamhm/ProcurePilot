@@ -16,6 +16,6 @@ public sealed class ProcurePilotDbContextFactory : IDesignTimeDbContextFactory<P
                 npgsql => npgsql.MigrationsAssembly(typeof(ProcurePilotDbContext).Assembly.FullName))
             .Options;
 
-        return new ProcurePilotDbContext(options);
+        return new ProcurePilotDbContext(options, new NullTenantContext());
     }
 }
