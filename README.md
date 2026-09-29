@@ -6,12 +6,13 @@ ProcurePilot is a .NET 10 Blazor Web App orchestrated locally with Aspire.
 
 - .NET SDK 10.0.401 or a compatible 10.0 patch selected by `global.json`
 - Aspire CLI 13.5.4 (`dotnet tool install --global Aspire.Cli --version 13.5.4`)
-- Docker Desktop is not required for the foundation task, but will be required when PostgreSQL is introduced in Sprint 0
+- Docker Desktop with Linux containers
 
 ## Build and test
 
 ```powershell
 dotnet restore ProcurePilot.slnx
+dotnet tool restore
 dotnet build ProcurePilot.slnx --no-restore
 dotnet test ProcurePilot.slnx --no-build
 ```
@@ -22,8 +23,21 @@ dotnet test ProcurePilot.slnx --no-build
 dotnet run --project ProcurePilot.AppHost
 ```
 
-The AppHost starts the `web` resource and exposes the Aspire dashboard URL in the terminal.
+The AppHost starts PostgreSQL in Docker, applies pending EF Core migrations through the dedicated `migrations` resource, then starts `web`. Aspire injects the `procurepilot` connection string; no database password or fixed host port is stored in the repository. The dashboard URL is printed in the terminal.
+
+## Create a migration
+
+Run this only after deliberately changing the EF Core model:
+
+```powershell
+dotnet tool restore
+dotnet ef migrations add <MigrationName> `
+  --project src/ProcurePilot.Infrastructure `
+  --output-dir Persistence/Migrations
+```
+
+Commit the generated migration and model snapshot. Starting the AppHost then applies it to PostgreSQL before the web application starts. The normal web process never applies migrations implicitly.
 
 ## Current scope
 
-This repository contains only the Sprint 0 engineering foundation. PostgreSQL, Identity, tenant resolution, CI, and business capabilities are intentionally not implemented yet.
+This repository contains the Sprint 0 engineering foundation and local PostgreSQL persistence plumbing. Identity, tenant resolution, CI, and business capabilities are intentionally not implemented yet.

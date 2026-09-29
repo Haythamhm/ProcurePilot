@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ProcurePilot.AppHost\ProcurePilot.AppHost.csproj" />
+    <ProjectReference Include="..\..\src\ProcurePilot.Infrastructure\ProcurePilot.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

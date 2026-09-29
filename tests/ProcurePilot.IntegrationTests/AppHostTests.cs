@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ProcurePilot.Infrastructure.Persistence;
 
 namespace ProcurePilot.IntegrationTests.Tests;
 
@@ -7,7 +9,7 @@ public sealed class AppHostTests
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(2);
 
     [Fact]
-    public async Task WebResourceBecomesHealthy()
+    public async Task PostgreSqlMigrationsAreAppliedAndWebBecomesHealthy()
     {
         using var cancellationTokenSource = new CancellationTokenSource(DefaultTimeout);
         var cancellationToken = cancellationTokenSource.Token;
@@ -27,5 +29,26 @@ public sealed class AppHostTests
         await app.ResourceNotifications
             .WaitForResourceHealthyAsync("web", cancellationToken)
             .WaitAsync(DefaultTimeout, cancellationToken);
+
+        var connectionString = await app.GetConnectionStringAsync("procurepilot", cancellationToken);
+        Assert.False(string.IsNullOrWhiteSpace(connectionString));
+
+        var options = new DbContextOptionsBuilder<ProcurePilotDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+
+        await using var dbContext = new ProcurePilotDbContext(options);
+        Assert.True(await dbContext.Database.CanConnectAsync(cancellationToken));
+
+        var appliedMigrations = await dbContext.Database
+            .GetAppliedMigrationsAsync(cancellationToken);
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_InitialTechnicalBaseline", StringComparison.Ordinal));
+
+        await dbContext.Database.MigrateAsync(cancellationToken);
+        var pendingMigrations = await dbContext.Database
+            .GetPendingMigrationsAsync(cancellationToken);
+        Assert.Empty(pendingMigrations);
     }
 }
