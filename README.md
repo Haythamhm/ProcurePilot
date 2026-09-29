@@ -29,6 +29,8 @@ dotnet run --project ProcurePilot.AppHost
 
 The AppHost starts PostgreSQL in Docker, applies pending EF Core migrations through the dedicated `migrations` resource, then starts `web`. Aspire injects the `procurepilot` connection string; no database password or fixed host port is stored in the repository. The dashboard URL is printed in the terminal.
 
+Aspire probes the web health endpoint over HTTP. HTTPS remains available for local browser use, while the orchestration health gate does not depend on trusting a machine-specific development certificate on CI runners.
+
 ## Create a migration
 
 Run this only after deliberately changing the EF Core model:

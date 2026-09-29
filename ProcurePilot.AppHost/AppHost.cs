@@ -13,6 +13,6 @@ builder.AddProject<Projects.ProcurePilot_Web>("web")
     .WithReference(database)
     .WaitForCompletion(migrations)
     .WithExternalHttpEndpoints()
-    .WithHttpHealthCheck("/health");
+    .WithHttpHealthCheck("/health", endpointName: "http");
 
 builder.Build().Run();
