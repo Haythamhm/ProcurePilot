@@ -46,7 +46,7 @@ dotnet user-secrets set --project ProcurePilot.AppHost "Identity:Bootstrap:Passw
 dotnet user-secrets set --project ProcurePilot.AppHost "Identity:Bootstrap:DisplayName" "Local Admin"
 ```
 
-Start the AppHost normally. The explicit `migrations` resource applies the schema and idempotently creates the configured tenant, user, `Administrator` role, and the synthetic `Atlas Manufacturing` demo vendor before `web` starts. The vendor is scoped to the configured bootstrap tenant. If all four values are absent, no account or demo vendor is created. A partial configuration fails fast. No credentials are stored in the repository.
+Start the AppHost normally. The explicit `migrations` resource applies the schema and idempotently creates the configured tenant, user, `Administrator` role, the synthetic `Atlas Manufacturing` vendor, and purchase order `PO-2026-1042` before `web` starts. Demo data is scoped to the configured bootstrap tenant. If all four values are absent, no account or demo data is created. A partial configuration fails fast. No credentials are stored in the repository.
 
 Open `/account/login`. The application uses an HttpOnly Identity cookie, antiforgery protection, and a server-generated tenant claim. Production cookies are always marked Secure; local Aspire HTTP uses the development exception required by the local launch profile.
 
@@ -65,4 +65,4 @@ Commit the generated migration and model snapshot. Starting the AppHost then app
 
 ## Current scope
 
-This repository contains the completed Sprint 0 engineering foundation and the PP-6 Vendor master-data baseline for Sprint 1. Purchase orders, invoices, matching, exceptions, AI, and other later capabilities are intentionally not implemented yet.
+This repository contains the completed Sprint 0 engineering foundation plus the PP-6 Vendor and PP-7 Purchase Order persistence baselines for Sprint 1. Purchase Order UI, invoices, matching, exceptions, AI, and other later capabilities are intentionally not implemented yet.

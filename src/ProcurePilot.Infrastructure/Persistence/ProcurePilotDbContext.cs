@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Tenancy;
+using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
 using ProcurePilot.Domain.Vendors;
 using ProcurePilot.Infrastructure.Identity;
@@ -19,6 +20,10 @@ public sealed class ProcurePilotDbContext(
     public DbSet<Tenant> Tenants => Set<Tenant>();
 
     public DbSet<Vendor> Vendors => Set<Vendor>();
+
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -58,6 +63,7 @@ public sealed class ProcurePilotDbContext(
                 .IsRequired();
             vendor.Property(value => value.TaxIdentifier)
                 .HasMaxLength(Vendor.TaxIdentifierMaxLength);
+            vendor.HasAlternateKey(value => new { value.TenantId, value.Id });
             vendor.HasIndex(value => new { value.TenantId, value.ExternalReference })
                 .IsUnique();
             vendor.HasIndex(value => new { value.TenantId, value.Name });
@@ -65,6 +71,69 @@ public sealed class ProcurePilotDbContext(
                 .WithMany()
                 .HasForeignKey(value => value.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PurchaseOrder>(purchaseOrder =>
+        {
+            purchaseOrder.ToTable("PurchaseOrders");
+            purchaseOrder.HasKey(value => value.Id);
+            purchaseOrder.HasAlternateKey(value => new { value.TenantId, value.Id });
+            purchaseOrder.Property(value => value.TenantId).IsRequired();
+            purchaseOrder.Property(value => value.VendorId).IsRequired();
+            purchaseOrder.Property(value => value.Number)
+                .HasMaxLength(PurchaseOrder.NumberMaxLength)
+                .IsRequired();
+            purchaseOrder.Property(value => value.OrderDate).IsRequired();
+            purchaseOrder.Property(value => value.Currency)
+                .HasMaxLength(PurchaseOrder.CurrencyMaxLength)
+                .IsFixedLength()
+                .IsRequired();
+            purchaseOrder.Property(value => value.Status)
+                .HasMaxLength(PurchaseOrder.StatusMaxLength)
+                .IsRequired();
+            purchaseOrder.Property(value => value.TotalAmount)
+                .HasPrecision(18, 2)
+                .IsRequired();
+            purchaseOrder.HasIndex(value => new { value.TenantId, value.Number })
+                .IsUnique();
+            purchaseOrder.HasIndex(value => new { value.TenantId, value.VendorId });
+            purchaseOrder.HasOne<Vendor>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.VendorId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            purchaseOrder.HasMany(value => value.Lines)
+                .WithOne()
+                .HasForeignKey(value => new { value.TenantId, value.PurchaseOrderId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            purchaseOrder.Navigation(value => value.Lines)
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<PurchaseOrderLine>(line =>
+        {
+            line.ToTable("PurchaseOrderLines");
+            line.HasKey(value => value.Id);
+            line.Property(value => value.TenantId).IsRequired();
+            line.Property(value => value.PurchaseOrderId).IsRequired();
+            line.Property(value => value.LineNumber).IsRequired();
+            line.Property(value => value.Description)
+                .HasMaxLength(PurchaseOrderLine.DescriptionMaxLength)
+                .IsRequired();
+            line.Property(value => value.Quantity)
+                .HasPrecision(18, 4)
+                .IsRequired();
+            line.Property(value => value.UnitPrice)
+                .HasPrecision(18, 2)
+                .IsRequired();
+            line.HasIndex(value => new
+            {
+                value.TenantId,
+                value.PurchaseOrderId,
+                value.LineNumber
+            })
+                .IsUnique();
         });
 
         ApplyTenantQueryFilters(modelBuilder);

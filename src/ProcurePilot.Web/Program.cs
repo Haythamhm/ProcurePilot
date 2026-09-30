@@ -51,6 +51,7 @@ builder.Services.Configure<IdentityBootstrapOptions>(
     builder.Configuration.GetSection(IdentityBootstrapOptions.SectionName));
 builder.Services.AddScoped<IdentityBootstrapper>();
 builder.Services.AddScoped<VendorBootstrapper>();
+builder.Services.AddScoped<PurchaseOrderBootstrapper>();
 
 var app = builder.Build();
 
@@ -63,6 +64,9 @@ if (args.Contains("--migrate", StringComparer.OrdinalIgnoreCase))
     await identityBootstrapper.SeedAsync();
     var vendorBootstrapper = scope.ServiceProvider.GetRequiredService<VendorBootstrapper>();
     await vendorBootstrapper.SeedAsync();
+    var purchaseOrderBootstrapper = scope.ServiceProvider
+        .GetRequiredService<PurchaseOrderBootstrapper>();
+    await purchaseOrderBootstrapper.SeedAsync();
     return;
 }
 

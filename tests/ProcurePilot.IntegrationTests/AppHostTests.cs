@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProcurePilot.Application.Tenancy;
+using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
 using ProcurePilot.Domain.Vendors;
 using ProcurePilot.Infrastructure;
@@ -21,7 +22,7 @@ public sealed class AppHostTests
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(2);
 
     [Fact]
-    public async Task IdentityVendorMigrationsTenantIsolationAndLoginWorkAgainstPostgreSql()
+    public async Task IdentityMasterDataMigrationsTenantIsolationAndLoginWorkAgainstPostgreSql()
     {
         const string bootstrapEmail = "admin@integration.local";
         const string bootstrapPassword = "ProcurePilot!42";
@@ -72,6 +73,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddVendorMasterData", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddPurchaseOrderMasterData", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -99,10 +103,26 @@ public sealed class AppHostTests
         Assert.Equal(VendorBootstrapper.AtlasTaxIdentifier, atlas.TaxIdentifier);
         Assert.Equal(bootstrapTenant.Id, atlas.TenantId);
 
+        var demoPurchaseOrder = await bootstrapTenantContext.PurchaseOrders
+            .Include(purchaseOrder => purchaseOrder.Lines)
+            .SingleAsync(cancellationToken);
+        Assert.Equal(PurchaseOrderBootstrapper.DemoNumber, demoPurchaseOrder.Number);
+        Assert.Equal(atlas.Id, demoPurchaseOrder.VendorId);
+        Assert.Equal(PurchaseOrderBootstrapper.DemoOrderDate, demoPurchaseOrder.OrderDate);
+        Assert.Equal(PurchaseOrderBootstrapper.DemoCurrency, demoPurchaseOrder.Currency);
+        Assert.Equal(PurchaseOrderBootstrapper.DemoStatus, demoPurchaseOrder.Status);
+        Assert.Equal(PurchaseOrderBootstrapper.DemoTotalAmount, demoPurchaseOrder.TotalAmount);
+        var demoLine = Assert.Single(demoPurchaseOrder.Lines);
+        Assert.Equal(PurchaseOrderBootstrapper.DemoLineDescription, demoLine.Description);
+        Assert.Equal(PurchaseOrderBootstrapper.DemoLineQuantity, demoLine.Quantity);
+        Assert.Equal(PurchaseOrderBootstrapper.DemoLineUnitPrice, demoLine.UnitPrice);
+
         await using var otherTenantContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(otherTenant.Id));
         Assert.Empty(await otherTenantContext.Vendors.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.PurchaseOrders.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.PurchaseOrderLines.ToListAsync(cancellationToken));
 
         otherTenantContext.Vendors.Add(new Vendor(
             Guid.NewGuid(),
@@ -113,11 +133,28 @@ public sealed class AppHostTests
             otherTenantContext.SaveChangesAsync(cancellationToken));
         Assert.Equal("Cross-tenant writes are not allowed.", crossTenantWrite.Message);
 
+        await using var crossTenantPurchaseOrderContext = new ProcurePilotDbContext(
+            options,
+            new TestTenantContext(otherTenant.Id));
+        crossTenantPurchaseOrderContext.PurchaseOrders.Add(new PurchaseOrder(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            atlas.Id,
+            "CROSS-TENANT-PO",
+            new DateOnly(2026, 1, 16),
+            "USD",
+            "Open",
+            10m));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            crossTenantPurchaseOrderContext.SaveChangesAsync(cancellationToken));
+
         await using var missingTenantContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(null));
         Assert.Empty(await missingTenantContext.Tenants.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.Vendors.ToListAsync(cancellationToken));
+        Assert.Empty(await missingTenantContext.PurchaseOrders.ToListAsync(cancellationToken));
+        Assert.Empty(await missingTenantContext.PurchaseOrderLines.ToListAsync(cancellationToken));
 
         using var invalidClient = app.CreateHttpClient("web", "http");
         var invalidLoginPage = await invalidClient.GetAsync("/account/login", cancellationToken);
@@ -205,6 +242,13 @@ public sealed class AppHostTests
             scope.ServiceProvider.GetRequiredService<DbContextOptions<ProcurePilotDbContext>>());
         await vendorBootstrapper.SeedAsync(cancellationToken);
         await vendorBootstrapper.SeedAsync(cancellationToken);
+
+        var purchaseOrderBootstrapper = new PurchaseOrderBootstrapper(
+            bootstrapOptions,
+            dbContext,
+            scope.ServiceProvider.GetRequiredService<DbContextOptions<ProcurePilotDbContext>>());
+        await purchaseOrderBootstrapper.SeedAsync(cancellationToken);
+        await purchaseOrderBootstrapper.SeedAsync(cancellationToken);
     }
 
     private sealed class TestTenantContext(Guid? tenantId) : ITenantContext
