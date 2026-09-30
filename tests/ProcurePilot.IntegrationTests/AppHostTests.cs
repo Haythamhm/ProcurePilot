@@ -124,6 +124,25 @@ public sealed class AppHostTests
         Assert.Empty(await otherTenantContext.PurchaseOrders.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.PurchaseOrderLines.ToListAsync(cancellationToken));
 
+        var otherTenantVendor = new Vendor(
+            Guid.NewGuid(),
+            otherTenant.Id,
+            "OTHER-VENDOR",
+            "Other Tenant Vendor");
+        var otherTenantPurchaseOrder = new PurchaseOrder(
+            Guid.NewGuid(),
+            otherTenant.Id,
+            otherTenantVendor.Id,
+            "PO-OTHER-TENANT",
+            new DateOnly(2026, 1, 17),
+            "USD",
+            "Open",
+            25m);
+        otherTenantPurchaseOrder.AddLine(Guid.NewGuid(), 1, "Tenant secret line", 1m, 25m);
+        otherTenantContext.Vendors.Add(otherTenantVendor);
+        otherTenantContext.PurchaseOrders.Add(otherTenantPurchaseOrder);
+        await otherTenantContext.SaveChangesAsync(cancellationToken);
+
         otherTenantContext.Vendors.Add(new Vendor(
             Guid.NewGuid(),
             bootstrapTenant.Id,
@@ -193,6 +212,16 @@ public sealed class AppHostTests
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
         var homeHtml = await loginResponse.Content.ReadAsStringAsync(cancellationToken);
         Assert.Contains(bootstrapEmail, homeHtml, StringComparison.OrdinalIgnoreCase);
+
+        var purchaseOrdersResponse = await client.GetAsync("/purchase-orders", cancellationToken);
+        Assert.Equal(HttpStatusCode.OK, purchaseOrdersResponse.StatusCode);
+        var purchaseOrdersHtml = await purchaseOrdersResponse.Content.ReadAsStringAsync(cancellationToken);
+        Assert.Contains(PurchaseOrderBootstrapper.DemoNumber, purchaseOrdersHtml, StringComparison.Ordinal);
+        Assert.Contains(VendorBootstrapper.AtlasName, purchaseOrdersHtml, StringComparison.Ordinal);
+        Assert.Contains(PurchaseOrderBootstrapper.DemoLineDescription, purchaseOrdersHtml, StringComparison.Ordinal);
+        Assert.Contains("Purchase Orders", purchaseOrdersHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain(otherTenantPurchaseOrder.Number, purchaseOrdersHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Tenant secret line", purchaseOrdersHtml, StringComparison.Ordinal);
     }
 
     private static string ExtractAntiforgeryToken(string html)

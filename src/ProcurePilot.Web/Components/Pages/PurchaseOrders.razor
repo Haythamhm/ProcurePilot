@@ -1,0 +1,126 @@
+@page "/purchase-orders"
+@using ProcurePilot.Application.Purchasing
+@inject IPurchaseOrderQueries PurchaseOrderQueries
+@inject ILogger<PurchaseOrders> Logger
+
+@attribute [Authorize(Policy = AuthorizationPolicies.ActiveTenant)]
+
+<PageTitle>Purchase Orders | ProcurePilot</PageTitle>
+
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">Purchasing</p>
+        <h1>Purchase Orders</h1>
+        <p class="page-summary">Review purchase orders available to your tenant.</p>
+    </div>
+</header>
+
+@if (_isLoading)
+{
+    <div class="state-card" role="status" aria-live="polite">
+        Loading purchase orders…
+    </div>
+}
+else if (_loadFailed)
+{
+    <div class="state-card state-card-error" role="alert">
+        Purchase orders could not be loaded. Please try again later.
+    </div>
+}
+else if (_purchaseOrders.Count == 0)
+{
+    <div class="state-card">
+        <h2>No purchase orders</h2>
+        <p>No purchase order is available for this tenant.</p>
+    </div>
+}
+else
+{
+    <section class="po-card" aria-labelledby="purchase-orders-heading">
+        <div class="card-heading">
+            <div>
+                <h2 id="purchase-orders-heading">All purchase orders</h2>
+                <p>@_purchaseOrders.Count purchase order@(_purchaseOrders.Count == 1 ? string.Empty : "s")</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="po-table">
+                <caption class="visually-hidden">Purchase orders available to the active tenant</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">PO number</th>
+                        <th scope="col">Vendor</th>
+                        <th scope="col">Order date</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="numeric">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var purchaseOrder in _purchaseOrders)
+                    {
+                        <tr>
+                            <td><strong>@purchaseOrder.Number</strong></td>
+                            <td>@purchaseOrder.VendorName</td>
+                            <td>@purchaseOrder.OrderDate.ToString("yyyy-MM-dd")</td>
+                            <td><span class="status-badge">@purchaseOrder.Status</span></td>
+                            <td class="numeric">@purchaseOrder.TotalAmount.ToString("N2") @purchaseOrder.Currency</td>
+                        </tr>
+                        <tr class="line-details-row">
+                            <td colspan="5">
+                                <div class="line-details">
+                                    <h3>Line items</h3>
+                                    <table class="line-table">
+                                        <caption class="visually-hidden">Line items for @purchaseOrder.Number</caption>
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Line</th>
+                                                <th scope="col">Description</th>
+                                                <th scope="col" class="numeric">Quantity</th>
+                                                <th scope="col" class="numeric">Unit price</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var line in purchaseOrder.Lines)
+                                            {
+                                                <tr>
+                                                    <td>@line.LineNumber</td>
+                                                    <td>@line.Description</td>
+                                                    <td class="numeric">@line.Quantity.ToString("0.####")</td>
+                                                    <td class="numeric">@line.UnitPrice.ToString("N2") @purchaseOrder.Currency</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<PurchaseOrderReadModel> _purchaseOrders = [];
+    private bool _isLoading = true;
+    private bool _loadFailed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _purchaseOrders = await PurchaseOrderQueries.ListAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load purchase orders for the active tenant.");
+            _loadFailed = true;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -27,3 +27,9 @@ The database enforces:
 - restrictive Vendor deletion and aggregate-owned cascade deletion of PO lines.
 
 The migration resource seeds the synthetic `PO-2026-1042` with one line after Atlas exists. The seed is idempotent and rejects conflicting data. Status lifecycle rules, PO CRUD, API, and UI remain outside PP-7.
+
+## Purchase order read UI — PP-8
+
+The authenticated `/purchase-orders` page reads a tenant-scoped projection through `IPurchaseOrderQueries`. The Application project owns the read contract and DTOs; Infrastructure implements the query with EF Core and the existing fail-closed tenant filters. The Web project does not access `ProcurePilotDbContext` directly.
+
+The page exposes the PO header, supplier, status, total, and ordered line items. It includes loading, empty, and failure states and uses explicit table headings and text status labels. It is intentionally read-only: matching, editing, workflow transitions, and new business rules remain outside PP-8.

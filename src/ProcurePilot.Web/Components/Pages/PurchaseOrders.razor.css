@@ -1,0 +1,159 @@
+.page-heading {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+    color: #62636d;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin: 0 0 0.35rem;
+    text-transform: uppercase;
+}
+
+h1 {
+    color: #26262b;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.page-summary {
+    color: #6b6b75;
+    margin: 0.4rem 0 0;
+}
+
+.po-card,
+.state-card {
+    background: #fff;
+    border: 1px solid #d6d6de;
+    border-radius: 0.5rem;
+}
+
+.state-card {
+    color: #4d4d56;
+    padding: 2rem;
+}
+
+.state-card h2 {
+    color: #26262b;
+    font-size: 1.125rem;
+}
+
+.state-card p {
+    margin-bottom: 0;
+}
+
+.state-card-error {
+    border-left: 4px solid #b42318;
+    color: #7a271a;
+}
+
+.card-heading {
+    align-items: center;
+    border-bottom: 1px solid #e5e5eb;
+    display: flex;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+}
+
+.card-heading h2 {
+    color: #26262b;
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.card-heading p {
+    color: #6b6b75;
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0;
+}
+
+.po-table,
+.line-table {
+    border-collapse: collapse;
+    color: #35353b;
+    width: 100%;
+}
+
+.po-table th,
+.po-table td {
+    border-bottom: 1px solid #e5e5eb;
+    padding: 0.9rem 1.5rem;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.po-table > thead th,
+.line-table th {
+    background: #f8f8fa;
+    color: #62636d;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.po-table .numeric,
+.line-table .numeric {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.status-badge {
+    background: #ecfdf3;
+    border: 1px solid #abefc6;
+    border-radius: 999px;
+    color: #067647;
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+}
+
+.line-details-row > td {
+    background: #fafafe;
+    padding: 0 1.5rem 1.25rem;
+}
+
+.line-details {
+    border-left: 3px solid #667085;
+    padding: 0.75rem 1rem;
+}
+
+.line-details h3 {
+    color: #4d4d56;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    margin: 0 0 0.65rem;
+    text-transform: uppercase;
+}
+
+.line-table th,
+.line-table td {
+    border-bottom: 1px solid #e5e5eb;
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+}
+
+.line-table tbody tr:last-child td,
+.po-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+@media (max-width: 800px) {
+    .po-table th,
+    .po-table td {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .line-details-row > td {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}

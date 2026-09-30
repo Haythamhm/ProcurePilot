@@ -65,4 +65,4 @@ Commit the generated migration and model snapshot. Starting the AppHost then app
 
 ## Current scope
 
-This repository contains the completed Sprint 0 engineering foundation plus the PP-6 Vendor and PP-7 Purchase Order persistence baselines for Sprint 1. Purchase Order UI, invoices, matching, exceptions, AI, and other later capabilities are intentionally not implemented yet.
+This repository contains the completed Sprint 0 engineering foundation plus the PP-6 Vendor and PP-7 Purchase Order persistence baselines for Sprint 1. PP-8 adds an authenticated, tenant-scoped, read-only Purchase Orders page at `/purchase-orders`. Purchase Order editing, invoices, matching, exceptions, AI, and other later capabilities are intentionally not implemented yet.

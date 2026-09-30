@@ -2,9 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ProcurePilot.Application.Purchasing;
 using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Infrastructure.Identity;
 using ProcurePilot.Infrastructure.Persistence;
+using ProcurePilot.Infrastructure.Persistence.Queries;
 
 namespace ProcurePilot.Infrastructure;
 
@@ -22,6 +24,8 @@ public static class DependencyInjection
             options.UseNpgsql(
                 connectionString,
                 npgsql => npgsql.MigrationsAssembly(typeof(ProcurePilotDbContext).Assembly.FullName)));
+
+        services.AddScoped<IPurchaseOrderQueries, PurchaseOrderQueries>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
