@@ -8,3 +8,7 @@ Store current C4, component, data-flow, deployment, and module-boundary document
 - Do not document speculative services or claim production characteristics that have not been validated.
 
 The current foundation decisions are indexed in [the ADR directory](../adr/README.md).
+
+Implemented architecture notes:
+
+- [Master data](master-data.md) — tenant-scoped Vendor baseline and demo seed.

@@ -5,6 +5,7 @@ using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Infrastructure;
 using ProcurePilot.Infrastructure.Persistence;
 using ProcurePilot.Web.Components;
+using ProcurePilot.Web.DemoData;
 using ProcurePilot.Web.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,6 +50,7 @@ builder.Services.AddScoped<IAuthorizationHandler, ActiveTenantAuthorizationHandl
 builder.Services.Configure<IdentityBootstrapOptions>(
     builder.Configuration.GetSection(IdentityBootstrapOptions.SectionName));
 builder.Services.AddScoped<IdentityBootstrapper>();
+builder.Services.AddScoped<VendorBootstrapper>();
 
 var app = builder.Build();
 
@@ -59,6 +61,8 @@ if (args.Contains("--migrate", StringComparer.OrdinalIgnoreCase))
     await dbContext.Database.MigrateAsync();
     var identityBootstrapper = scope.ServiceProvider.GetRequiredService<IdentityBootstrapper>();
     await identityBootstrapper.SeedAsync();
+    var vendorBootstrapper = scope.ServiceProvider.GetRequiredService<VendorBootstrapper>();
+    await vendorBootstrapper.SeedAsync();
     return;
 }
 

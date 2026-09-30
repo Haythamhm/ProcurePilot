@@ -7,9 +7,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Domain.Tenancy;
+using ProcurePilot.Domain.Vendors;
 using ProcurePilot.Infrastructure;
 using ProcurePilot.Infrastructure.Identity;
 using ProcurePilot.Infrastructure.Persistence;
+using ProcurePilot.Web.DemoData;
 using ProcurePilot.Web.Identity;
 
 namespace ProcurePilot.IntegrationTests.Tests;
@@ -19,7 +21,7 @@ public sealed class AppHostTests
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(2);
 
     [Fact]
-    public async Task IdentityMigrationsTenantIsolationAndLoginWorkAgainstPostgreSql()
+    public async Task IdentityVendorMigrationsTenantIsolationAndLoginWorkAgainstPostgreSql()
     {
         const string bootstrapEmail = "admin@integration.local";
         const string bootstrapPassword = "ProcurePilot!42";
@@ -46,7 +48,7 @@ public sealed class AppHostTests
         var connectionString = await app.GetConnectionStringAsync("procurepilot", cancellationToken);
         Assert.False(string.IsNullOrWhiteSpace(connectionString));
 
-        await SeedIdentityAsync(
+        await SeedDemoDataAsync(
             connectionString,
             bootstrapEmail,
             bootstrapPassword,
@@ -67,6 +69,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddIdentityAndTenancy", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddVendorMasterData", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -88,10 +93,31 @@ public sealed class AppHostTests
             .ToListAsync(cancellationToken);
         Assert.Equal([bootstrapTenant.Id], visibleTenantIds);
 
+        var atlas = await bootstrapTenantContext.Vendors.SingleAsync(cancellationToken);
+        Assert.Equal(VendorBootstrapper.AtlasExternalReference, atlas.ExternalReference);
+        Assert.Equal(VendorBootstrapper.AtlasName, atlas.Name);
+        Assert.Equal(VendorBootstrapper.AtlasTaxIdentifier, atlas.TaxIdentifier);
+        Assert.Equal(bootstrapTenant.Id, atlas.TenantId);
+
+        await using var otherTenantContext = new ProcurePilotDbContext(
+            options,
+            new TestTenantContext(otherTenant.Id));
+        Assert.Empty(await otherTenantContext.Vendors.ToListAsync(cancellationToken));
+
+        otherTenantContext.Vendors.Add(new Vendor(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            "CROSS-TENANT",
+            "Cross Tenant Vendor"));
+        var crossTenantWrite = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            otherTenantContext.SaveChangesAsync(cancellationToken));
+        Assert.Equal("Cross-tenant writes are not allowed.", crossTenantWrite.Message);
+
         await using var missingTenantContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(null));
         Assert.Empty(await missingTenantContext.Tenants.ToListAsync(cancellationToken));
+        Assert.Empty(await missingTenantContext.Vendors.ToListAsync(cancellationToken));
 
         using var invalidClient = app.CreateHttpClient("web", "http");
         var invalidLoginPage = await invalidClient.GetAsync("/account/login", cancellationToken);
@@ -143,7 +169,7 @@ public sealed class AppHostTests
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }
 
-    private static async Task SeedIdentityAsync(
+    private static async Task SeedDemoDataAsync(
         string connectionString,
         string email,
         string password,
@@ -157,19 +183,28 @@ public sealed class AppHostTests
 
         await using var serviceProvider = services.BuildServiceProvider();
         await using var scope = serviceProvider.CreateAsyncScope();
+        var bootstrapOptions = Options.Create(new IdentityBootstrapOptions
+        {
+            TenantName = "Integration Tenant",
+            Email = email,
+            Password = password,
+            DisplayName = "Integration Admin"
+        });
+        var dbContext = scope.ServiceProvider.GetRequiredService<ProcurePilotDbContext>();
         var bootstrapper = new IdentityBootstrapper(
-            Options.Create(new IdentityBootstrapOptions
-            {
-                TenantName = "Integration Tenant",
-                Email = email,
-                Password = password,
-                DisplayName = "Integration Admin"
-            }),
-            scope.ServiceProvider.GetRequiredService<ProcurePilotDbContext>(),
+            bootstrapOptions,
+            dbContext,
             scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
             scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>());
 
         await bootstrapper.SeedAsync(cancellationToken);
+
+        var vendorBootstrapper = new VendorBootstrapper(
+            bootstrapOptions,
+            dbContext,
+            scope.ServiceProvider.GetRequiredService<DbContextOptions<ProcurePilotDbContext>>());
+        await vendorBootstrapper.SeedAsync(cancellationToken);
+        await vendorBootstrapper.SeedAsync(cancellationToken);
     }
 
     private sealed class TestTenantContext(Guid? tenantId) : ITenantContext

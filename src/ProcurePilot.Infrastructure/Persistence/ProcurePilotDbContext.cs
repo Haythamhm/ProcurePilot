@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Domain.Tenancy;
+using ProcurePilot.Domain.Vendors;
 using ProcurePilot.Infrastructure.Identity;
 
 namespace ProcurePilot.Infrastructure.Persistence;
@@ -16,6 +17,8 @@ public sealed class ProcurePilotDbContext(
     private Guid? CurrentTenantId => tenantContext.TenantId;
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
+
+    public DbSet<Vendor> Vendors => Set<Vendor>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,6 +40,28 @@ public sealed class ProcurePilotDbContext(
             user.Property(value => value.DisplayName).HasMaxLength(200).IsRequired();
             user.HasIndex(value => value.TenantId);
             user.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(value => value.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Vendor>(vendor =>
+        {
+            vendor.ToTable("Vendors");
+            vendor.HasKey(value => value.Id);
+            vendor.Property(value => value.TenantId).IsRequired();
+            vendor.Property(value => value.ExternalReference)
+                .HasMaxLength(Vendor.ExternalReferenceMaxLength)
+                .IsRequired();
+            vendor.Property(value => value.Name)
+                .HasMaxLength(Vendor.NameMaxLength)
+                .IsRequired();
+            vendor.Property(value => value.TaxIdentifier)
+                .HasMaxLength(Vendor.TaxIdentifierMaxLength);
+            vendor.HasIndex(value => new { value.TenantId, value.ExternalReference })
+                .IsUnique();
+            vendor.HasIndex(value => new { value.TenantId, value.Name });
+            vendor.HasOne<Tenant>()
                 .WithMany()
                 .HasForeignKey(value => value.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
