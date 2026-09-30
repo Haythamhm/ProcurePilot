@@ -2,6 +2,10 @@
 
 ProcurePilot is a .NET 10 Blazor Web App orchestrated locally with Aspire.
 
+- [Contribution and coding conventions](CONTRIBUTING.md)
+- [Technical documentation](docs/README.md)
+- [Architecture decisions](docs/adr/README.md)
+
 ## Prerequisites
 
 - .NET SDK 10.0.401 or a compatible 10.0 patch selected by `global.json`

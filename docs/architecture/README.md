@@ -1,0 +1,10 @@
+# Architecture documentation
+
+Store current C4, component, data-flow, deployment, and module-boundary documentation here when it describes implemented or accepted architecture.
+
+- Reference the governing ADRs and backlog task.
+- Keep diagrams as reviewable text, preferably Mermaid.
+- Update diagrams when the implementation changes.
+- Do not document speculative services or claim production characteristics that have not been validated.
+
+The current foundation decisions are indexed in [the ADR directory](../adr/README.md).
