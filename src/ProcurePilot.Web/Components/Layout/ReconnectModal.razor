@@ -1,31 +1,36 @@
 ﻿<script type="module" src="@Assets["Components/Layout/ReconnectModal.razor.js"]"></script>
 
-<dialog id="components-reconnect-modal" data-nosnippet>
-    <div class="components-reconnect-container">
+<dialog id="components-reconnect-modal"
+        aria-labelledby="components-reconnect-title"
+        aria-describedby="components-reconnect-description"
+        data-nosnippet>
+    <div class="components-reconnect-container" aria-live="assertive">
         <div class="components-rejoining-animation" aria-hidden="true">
             <div></div>
             <div></div>
         </div>
-        <p class="components-reconnect-first-attempt-visible">
-            Rejoining the server...
+        <p class="components-reconnect-kicker">Secure session</p>
+        <h2 id="components-reconnect-title">Connection interrupted</h2>
+        <p id="components-reconnect-description" class="components-reconnect-first-attempt-visible">
+            Reconnecting to your tenant workspace…
         </p>
         <p class="components-reconnect-repeated-attempt-visible">
-            Rejoin failed... trying again in <span id="components-seconds-to-next-attempt"></span> seconds.
+            The connection is still unavailable. Retrying in <span id="components-seconds-to-next-attempt"></span> seconds.
         </p>
         <p class="components-reconnect-failed-visible">
-            Failed to rejoin.<br />Please retry or reload the page.
+            Automatic reconnection failed. Retry now or reload the page.
         </p>
-        <button id="components-reconnect-button" class="components-reconnect-failed-visible">
-            Retry
+        <button id="components-reconnect-button" class="components-reconnect-failed-visible" type="button">
+            Retry connection
         </button>
         <p class="components-pause-visible">
-            The session has been paused by the server.
+            Your secure session has been paused by the server.
         </p>
         <p class="components-resume-failed-visible">
-            Failed to resume the session.<br />Please retry or reload the page.
+            The session could not be resumed. Retry now or reload the page.
         </p>
-        <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible">
-            Resume
+        <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible" type="button">
+            Resume session
         </button>
     </div>
 </dialog>

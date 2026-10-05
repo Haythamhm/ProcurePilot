@@ -1,14 +1,45 @@
-﻿@page "/"
+@page "/"
 
 @attribute [Authorize(Policy = AuthorizationPolicies.ActiveTenant)]
 
 <PageTitle>ProcurePilot</PageTitle>
 
-<h1>ProcurePilot</h1>
-
 <AuthorizeView>
     <Authorized Context="authenticationState">
-        <p>Signed in as @authenticationState.User.Identity?.Name.</p>
-        <p>The secure tenant foundation is ready.</p>
+        <header class="page-heading">
+            <p class="eyebrow">Workspace</p>
+            <h1>Welcome to ProcurePilot</h1>
+            <p class="page-summary">Your secure, tenant-scoped purchasing workspace.</p>
+        </header>
+
+        <div class="home-grid">
+            <section class="feature-card" aria-labelledby="purchase-order-card-title">
+                <div class="feature-card-icon pp-icon-purchase-order" aria-hidden="true"></div>
+                <div>
+                    <p class="card-kicker">Available now</p>
+                    <h2 id="purchase-order-card-title">Purchase order reference</h2>
+                    <p>Review the purchase orders and line items available to your active tenant.</p>
+                    <a class="primary-link" href="purchase-orders">
+                        Open Purchase Orders
+                        <span aria-hidden="true">→</span>
+                    </a>
+                </div>
+            </section>
+
+            <aside class="session-card" aria-labelledby="session-card-title">
+                <p class="card-kicker">Current session</p>
+                <h2 id="session-card-title">Active workspace</h2>
+                <dl>
+                    <div>
+                        <dt>Signed in as</dt>
+                        <dd>@authenticationState.User.Identity?.Name</dd>
+                    </div>
+                    <div>
+                        <dt>Access</dt>
+                        <dd>Active tenant</dd>
+                    </div>
+                </dl>
+            </aside>
+        </div>
     </Authorized>
 </AuthorizeView>

@@ -12,3 +12,4 @@ The current foundation decisions are indexed in [the ADR directory](../adr/READM
 Implemented architecture notes:
 
 - [Master data](master-data.md) — tenant-scoped Vendor baseline and demo seed.
+- [Invoice domain](invoice-domain.md) — tenant-scoped Invoice aggregate and persistence baseline.

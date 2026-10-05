@@ -1,0 +1,128 @@
+.page-heading {
+    margin-bottom: 2rem;
+    max-width: 48rem;
+}
+
+.page-heading h1 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.1;
+    margin: 0;
+}
+
+.page-summary {
+    color: var(--pp-primary);
+    font-size: 1.05rem;
+    margin: 0.65rem 0 0;
+}
+
+.home-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: minmax(0, 1.45fr) minmax(17rem, 0.55fr);
+}
+
+.feature-card,
+.session-card {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+}
+
+.feature-card {
+    align-items: flex-start;
+    display: flex;
+    gap: 1.25rem;
+    min-height: 18rem;
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.feature-card-icon {
+    align-items: center;
+    background: var(--pp-ink);
+    border-radius: 0.85rem;
+    color: var(--pp-surface);
+    display: inline-flex;
+    flex: 0 0 3.25rem;
+    font-size: 1.2rem;
+    height: 3.25rem;
+    justify-content: center;
+}
+
+.feature-card h2,
+.session-card h2 {
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.feature-card p:not(.card-kicker) {
+    color: var(--pp-primary);
+    margin: 0.75rem 0 2rem;
+    max-width: 34rem;
+}
+
+.primary-link {
+    align-items: center;
+    background: var(--pp-primary);
+    border: 1px solid var(--pp-primary);
+    border-radius: 0.65rem;
+    color: var(--pp-surface);
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 800;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.65rem 0.9rem;
+    text-decoration: none;
+}
+
+.primary-link:hover,
+.primary-link:focus-visible {
+    background: var(--pp-ink);
+    border-color: var(--pp-ink);
+    color: var(--pp-surface);
+}
+
+.session-card {
+    padding: 1.5rem;
+}
+
+.session-card dl {
+    margin: 1.5rem 0 0;
+}
+
+.session-card dl > div {
+    border-top: 1px solid var(--pp-muted);
+    padding: 1rem 0;
+}
+
+.session-card dt {
+    color: var(--pp-primary);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.session-card dd {
+    color: var(--pp-ink);
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin: 0.35rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+    .home-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .feature-card {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 540px) {
+    .feature-card {
+        flex-direction: column;
+    }
+}

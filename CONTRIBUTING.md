@@ -68,11 +68,13 @@ dotnet format ProcurePilot.slnx --verify-no-changes --no-restore
 Use the same commands as CI:
 
 ```powershell
-dotnet restore ProcurePilot.slnx
+dotnet restore ProcurePilot.slnx --locked-mode
 dotnet tool restore
 dotnet build ProcurePilot.slnx --configuration Release --no-restore
 dotnet test ProcurePilot.slnx --configuration Release --no-build
 ```
+
+Commit every generated `packages.lock.json` change with the dependency change that produced it. CI rejects lockfile drift and known vulnerable direct or transitive packages.
 
 ## ADR workflow
 

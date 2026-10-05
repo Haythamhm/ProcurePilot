@@ -1,37 +1,44 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">ProcurePilot <span>AI</span></a>
-    </div>
+<div class="brand-row">
+    <a class="navbar-brand" href="" aria-label="ProcurePilot home">
+        <span class="brand-name">ProcurePilot</span>
+        <span class="brand-suffix">AI</span>
+    </a>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<input id="navigation-toggle" type="checkbox" class="navbar-toggler" aria-label="Toggle navigation menu" />
+<label class="navbar-toggler-label" for="navigation-toggle">
+    <span class="pp-icon-menu" aria-hidden="true"></span>
+    <span class="visually-hidden">Toggle navigation menu</span>
+</label>
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
+    <nav class="nav" aria-label="Primary navigation">
+        <div class="nav-item">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="nav-icon pp-icon-home" aria-hidden="true"></span>
+                <span>Home</span>
             </NavLink>
         </div>
         <AuthorizeView>
             <Authorized>
                 <div class="nav-section-label">Workspace</div>
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <NavLink class="nav-link" href="purchase-orders">
-                        <span class="bi bi-receipt-nav-menu" aria-hidden="true"></span> Purchase Orders
+                        <span class="nav-icon pp-icon-purchase-order" aria-hidden="true"></span>
+                        <span>Purchase Orders</span>
                     </NavLink>
                 </div>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView>
             <Authorized>
-                <div class="nav-item px-3">
+                <div class="nav-item nav-item-secondary">
                     <a class="nav-link" href="/account/logout">
-                        <span class="bi bi-box-arrow-right" aria-hidden="true"></span> Sign out
+                        <span class="nav-icon pp-icon-logout" aria-hidden="true"></span>
+                        <span>Sign out</span>
                     </a>
                 </div>
             </Authorized>
         </AuthorizeView>
     </nav>
 </div>
-
