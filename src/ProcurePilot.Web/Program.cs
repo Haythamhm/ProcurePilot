@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Tenancy;
+using ProcurePilot.Application.Security;
 using ProcurePilot.Infrastructure;
 using ProcurePilot.Infrastructure.Persistence;
 using ProcurePilot.Web.Components;
@@ -21,7 +22,9 @@ builder.Services.AddRazorPages();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("procurepilot")
-        ?? throw new InvalidOperationException("Connection string 'procurepilot' is required."));
+        ?? throw new InvalidOperationException("Connection string 'procurepilot' is required."),
+    builder.Configuration.GetConnectionString("invoiceblobs")
+        ?? throw new InvalidOperationException("Connection string 'invoiceblobs' is required."));
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = IdentityConstants.ApplicationScheme;
@@ -45,7 +48,13 @@ builder.Services.AddAuthorizationBuilder()
         AuthorizationPolicies.ActiveTenant,
         policy => policy
             .RequireAuthenticatedUser()
-            .AddRequirements(new ActiveTenantRequirement()));
+            .AddRequirements(new ActiveTenantRequirement()))
+    .AddPolicy(
+        AuthorizationPolicies.InvoiceUpload,
+        policy => policy
+            .RequireAuthenticatedUser()
+            .AddRequirements(new ActiveTenantRequirement())
+            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.InvoiceUpload));
 builder.Services.AddScoped<IAuthorizationHandler, ActiveTenantAuthorizationHandler>();
 builder.Services.Configure<IdentityBootstrapOptions>(
     builder.Configuration.GetSection(IdentityBootstrapOptions.SectionName));

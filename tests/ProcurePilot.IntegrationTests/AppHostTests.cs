@@ -1,11 +1,14 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Text;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProcurePilot.Application.Tenancy;
+using ProcurePilot.Application.Invoices.Upload;
 using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
@@ -49,9 +52,12 @@ public sealed class AppHostTests
 
         var connectionString = await app.GetConnectionStringAsync("procurepilot", cancellationToken);
         Assert.False(string.IsNullOrWhiteSpace(connectionString));
+        var invoiceBlobConnectionString = await app.GetConnectionStringAsync("invoiceblobs", cancellationToken);
+        Assert.False(string.IsNullOrWhiteSpace(invoiceBlobConnectionString));
 
         await SeedDemoDataAsync(
             connectionString,
+            invoiceBlobConnectionString,
             bootstrapEmail,
             bootstrapPassword,
             cancellationToken);
@@ -80,6 +86,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddInvoiceDomain", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddInvoiceDocumentUpload", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -142,6 +151,46 @@ public sealed class AppHostTests
         Assert.Equal(InvoiceProcessingStatus.Processing, persistedInvoice.ProcessingStatus);
         Assert.Equal("Persisted invoice line", Assert.Single(persistedInvoice.Lines).Description);
 
+        var bootstrapUser = await invoiceReadContext.Users
+            .SingleAsync(user => user.Email == bootstrapEmail, cancellationToken);
+        var uploadServices = new ServiceCollection();
+        uploadServices.AddLogging();
+        uploadServices.AddDataProtection();
+        uploadServices.AddScoped<ITenantContext>(_ => new TestTenantContext(bootstrapTenant.Id));
+        uploadServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
+
+        await using (var uploadProvider = uploadServices.BuildServiceProvider())
+        await using (var uploadScope = uploadProvider.CreateAsyncScope())
+        {
+            var pdfBytes = Encoding.ASCII.GetBytes("%PDF-1.7\n% ProcurePilot integration invoice");
+            await using var pdfStream = new MemoryStream(pdfBytes);
+            var upload = await uploadScope.ServiceProvider
+                .GetRequiredService<IInvoiceUploadService>()
+                .UploadAsync(
+                    new InvoiceUploadRequest(pdfStream, "supplier-invoice.pdf", "application/pdf", pdfBytes.Length),
+                    bootstrapUser.Id,
+                    cancellationToken);
+
+            await using var uploadReadContext = new ProcurePilotDbContext(
+                options,
+                new TestTenantContext(bootstrapTenant.Id));
+            var uploadedInvoice = await uploadReadContext.Invoices
+                .SingleAsync(invoice => invoice.Id == upload.InvoiceId, cancellationToken);
+            var uploadedDocument = await uploadReadContext.InvoiceDocuments
+                .SingleAsync(document => document.Id == upload.DocumentId, cancellationToken);
+
+            Assert.Equal(InvoiceProcessingStatus.Processing, uploadedInvoice.ProcessingStatus);
+            Assert.Null(uploadedInvoice.InvoiceNumber);
+            Assert.Equal(bootstrapUser.Id, uploadedDocument.UploadedByUserId);
+            Assert.Equal("supplier-invoice.pdf", uploadedDocument.OriginalFileName);
+            Assert.StartsWith($"{bootstrapTenant.Id:N}/{upload.InvoiceId:N}/", uploadedDocument.StorageReference);
+
+            var blob = new BlobServiceClient(invoiceBlobConnectionString)
+                .GetBlobContainerClient("invoice-documents")
+                .GetBlobClient(uploadedDocument.StorageReference);
+            Assert.True(await blob.ExistsAsync(cancellationToken));
+        }
+
         await using var otherTenantContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(otherTenant.Id));
@@ -150,6 +199,7 @@ public sealed class AppHostTests
         Assert.Empty(await otherTenantContext.PurchaseOrderLines.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.Invoices.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.InvoiceLines.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.InvoiceDocuments.ToListAsync(cancellationToken));
 
         var otherTenantVendor = new Vendor(
             Guid.NewGuid(),
@@ -279,6 +329,11 @@ public sealed class AppHostTests
         Assert.Contains("Purchase Orders", purchaseOrdersHtml, StringComparison.Ordinal);
         Assert.DoesNotContain(otherTenantPurchaseOrder.Number, purchaseOrdersHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Tenant secret line", purchaseOrdersHtml, StringComparison.Ordinal);
+
+        var uploadPageResponse = await client.GetAsync("/invoices/upload", cancellationToken);
+        Assert.Equal(HttpStatusCode.OK, uploadPageResponse.StatusCode);
+        var uploadPageHtml = await uploadPageResponse.Content.ReadAsStringAsync(cancellationToken);
+        Assert.Contains("Upload an invoice", uploadPageHtml, StringComparison.Ordinal);
     }
 
     private static string ExtractAntiforgeryToken(string html)
@@ -294,6 +349,7 @@ public sealed class AppHostTests
 
     private static async Task SeedDemoDataAsync(
         string connectionString,
+        string invoiceBlobConnectionString,
         string email,
         string password,
         CancellationToken cancellationToken)
@@ -302,7 +358,7 @@ public sealed class AppHostTests
         services.AddLogging();
         services.AddDataProtection();
         services.AddScoped<ITenantContext>(_ => new TestTenantContext(null));
-        services.AddInfrastructure(connectionString);
+        services.AddInfrastructure(connectionString, invoiceBlobConnectionString);
 
         await using var serviceProvider = services.BuildServiceProvider();
         await using var scope = serviceProvider.CreateAsyncScope();

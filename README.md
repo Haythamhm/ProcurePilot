@@ -31,7 +31,7 @@ The GitHub Actions workflow in `.github/workflows/ci.yml` runs on pull requests 
 dotnet run --project ProcurePilot.AppHost
 ```
 
-The AppHost starts PostgreSQL in Docker, applies pending EF Core migrations through the dedicated `migrations` resource, then starts `web`. Aspire injects the `procurepilot` connection string; no database password or fixed host port is stored in the repository. The dashboard URL is printed in the terminal.
+The AppHost starts PostgreSQL and the Azurite storage emulator in Docker, applies pending EF Core migrations through the dedicated `migrations` resource, then starts `web`. Aspire injects the `procurepilot` and `invoiceblobs` connections; no database password, storage secret, or fixed host port is stored in the repository. The dashboard URL is printed in the terminal.
 
 The AppHost runs the web resource with its HTTP launch profile so orchestration and CI do not depend on trusting a machine-specific development certificate. HTTPS remains available when the Web project is launched directly with its HTTPS profile.
 
@@ -65,4 +65,4 @@ Commit the generated migration and model snapshot. Starting the AppHost then app
 
 ## Current scope
 
-This repository contains the completed Sprint 0 engineering foundation plus the PP-6 Vendor and PP-7 Purchase Order persistence baselines for Sprint 1. PP-8 adds an authenticated, tenant-scoped, read-only Purchase Orders page at `/purchase-orders`. Purchase Order editing, invoices, matching, exceptions, AI, and other later capabilities are intentionally not implemented yet.
+This repository contains the Sprint 0 engineering foundation, the Sprint 1 Vendor and Purchase Order baseline, and the first Sprint 2 invoice slices. PP-9 adds an authorized, tenant-scoped invoice document upload at `/invoices/upload`; PP-10 models invoices and lines; PP-11 provides the provider-neutral extraction boundary. Extraction orchestration, human review, matching, exceptions, and later capabilities remain intentionally out of scope.

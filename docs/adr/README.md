@@ -21,3 +21,4 @@ An ADR must explain context, the decision, alternatives, consequences, security/
 | [ADR-FOUNDATION-001](ADR-FOUNDATION-001.md) | Accepted | PP-1 | .NET 10, Blazor, Aspire, and solution boundaries |
 | [ADR-DATA-002](ADR-DATA-002.md) | Accepted | PP-2 | PostgreSQL local orchestration and EF Core migrations |
 | [ADR-IDENTITY-003](ADR-IDENTITY-003.md) | Accepted | PP-4 | ASP.NET Core Identity and tenant isolation baseline |
+| [ADR-STORAGE-004](ADR-STORAGE-004.md) | Accepted | PP-9 | Azure Blob-compatible invoice document storage |

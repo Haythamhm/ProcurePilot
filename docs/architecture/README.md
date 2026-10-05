@@ -14,3 +14,4 @@ Implemented architecture notes:
 - [Master data](master-data.md) — tenant-scoped Vendor baseline and demo seed.
 - [Invoice domain](invoice-domain.md) — tenant-scoped Invoice aggregate and persistence baseline.
 - [Invoice extraction boundary](invoice-extraction.md) — provider-neutral structured extraction contract.
+- [Invoice document upload](invoice-upload.md) — validated tenant-scoped object storage and metadata flow.
