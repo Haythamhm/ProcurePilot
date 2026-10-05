@@ -15,7 +15,7 @@ ProcurePilot is a .NET 10 Blazor Web App orchestrated locally with Aspire.
 ## Build and test
 
 ```powershell
-dotnet restore ProcurePilot.slnx
+dotnet restore ProcurePilot.slnx --locked-mode
 dotnet tool restore
 dotnet build ProcurePilot.slnx --no-restore
 dotnet test ProcurePilot.slnx --no-build
@@ -23,7 +23,7 @@ dotnet test ProcurePilot.slnx --no-build
 
 ## Continuous integration
 
-The GitHub Actions workflow in `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. It restores the SDK and repository-local tools, builds the complete solution in Release mode, and runs the full test suite. The GitHub-hosted Linux runner uses Docker for the real PostgreSQL integration test orchestrated by Aspire.
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. It restores the SDK and repository-local tools, restores dependencies from committed lockfiles, builds the complete solution in Release mode, and runs the full test suite. NuGet packages are cached by lockfile, transitive dependencies are audited, third-party actions are pinned to immutable commits, and checkout credentials are not persisted. The GitHub-hosted Linux runner uses Docker for the real PostgreSQL integration test orchestrated by Aspire.
 
 ## Run locally
 
