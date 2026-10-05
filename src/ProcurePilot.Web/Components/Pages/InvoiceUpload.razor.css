@@ -1,0 +1,221 @@
+.page-heading {
+    margin-bottom: 2rem;
+    max-width: 48rem;
+}
+
+.page-heading h1 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.1;
+    margin: 0;
+}
+
+.page-summary {
+    color: var(--pp-primary);
+    font-size: 1.05rem;
+    margin: 0.65rem 0 0;
+}
+
+.upload-card {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    max-width: 58rem;
+    overflow: hidden;
+}
+
+.upload-card-heading {
+    align-items: center;
+    border-bottom: 1px solid var(--pp-muted);
+    display: flex;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+}
+
+.upload-card-heading h2 {
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.step-badge {
+    border: 1px solid var(--pp-primary);
+    border-radius: 999px;
+    color: var(--pp-primary);
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.35rem 0.7rem;
+}
+
+.upload-body {
+    padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.file-picker {
+    align-items: center;
+    border: 2px dashed var(--pp-muted);
+    border-radius: 0.85rem;
+    cursor: pointer;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 8rem;
+    padding: 1.5rem;
+}
+
+.file-picker:hover,
+.file-picker:focus-within {
+    border-color: var(--pp-primary);
+}
+
+.file-picker-symbol,
+.result-symbol {
+    align-items: center;
+    background: var(--pp-ink);
+    border-radius: 0.75rem;
+    color: var(--pp-surface);
+    display: inline-flex;
+    flex: 0 0 2.75rem;
+    height: 2.75rem;
+    justify-content: center;
+    width: 2.75rem;
+}
+
+.file-picker-copy {
+    display: grid;
+    min-width: 0;
+}
+
+.file-picker-copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-picker-copy span,
+.upload-actions p,
+.upload-result p {
+    color: var(--pp-primary);
+}
+
+.file-picker-action {
+    border: 1px solid var(--pp-primary);
+    border-radius: 0.65rem;
+    color: var(--pp-primary);
+    font-weight: 800;
+    min-height: 2.75rem;
+    padding: 0.65rem 1rem;
+}
+
+.upload-guidance {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 1.5rem;
+}
+
+.upload-guidance > div {
+    border-top: 1px solid var(--pp-muted);
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: auto 1fr;
+    padding-top: 1rem;
+}
+
+.upload-guidance span {
+    color: var(--pp-primary);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.upload-guidance p {
+    color: var(--pp-primary);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.upload-guidance strong {
+    color: var(--pp-ink);
+}
+
+.upload-message,
+.upload-result {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+}
+
+.upload-message {
+    border: 1px solid var(--pp-primary);
+    border-left-width: 4px;
+    border-radius: 0.65rem;
+    margin-top: 1.5rem;
+    padding: 0.85rem 1rem;
+}
+
+.upload-message > span {
+    font-weight: 900;
+}
+
+.upload-message p,
+.upload-result p {
+    margin: 0;
+}
+
+.upload-actions {
+    align-items: center;
+    border-top: 1px solid var(--pp-muted);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+}
+
+.upload-actions p {
+    font-size: 0.8rem;
+    margin: 0;
+    text-align: right;
+}
+
+.upload-result {
+    min-height: 9rem;
+    padding: 2rem;
+}
+
+.upload-result strong {
+    color: var(--pp-ink);
+}
+
+.upload-result p {
+    margin-top: 0.3rem;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+    .upload-card-heading,
+    .upload-actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .file-picker {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .file-picker-action {
+        grid-column: 1 / -1;
+        text-align: center;
+        width: 100%;
+    }
+
+    .upload-guidance {
+        grid-template-columns: 1fr;
+    }
+
+    .upload-actions .btn {
+        width: 100%;
+    }
+
+    .upload-actions p {
+        text-align: left;
+    }
+}

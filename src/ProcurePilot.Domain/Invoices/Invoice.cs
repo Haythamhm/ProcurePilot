@@ -60,19 +60,39 @@ public sealed class Invoice : ITenantScopedEntity
         ProcessingStatus = InvoiceProcessingStatus.Processing;
     }
 
+    public static Invoice CreateProcessing(Guid id, Guid tenantId)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("An invoice identifier is required.", nameof(id));
+        }
+
+        if (tenantId == Guid.Empty)
+        {
+            throw new ArgumentException("A tenant identifier is required.", nameof(tenantId));
+        }
+
+        return new Invoice
+        {
+            Id = id,
+            TenantId = tenantId,
+            ProcessingStatus = InvoiceProcessingStatus.Processing
+        };
+    }
+
     public Guid Id { get; private set; }
 
     public Guid TenantId { get; private set; }
 
-    public Guid VendorId { get; private set; }
+    public Guid? VendorId { get; private set; }
 
-    public string InvoiceNumber { get; private set; } = string.Empty;
+    public string? InvoiceNumber { get; private set; }
 
-    public DateOnly InvoiceDate { get; private set; }
+    public DateOnly? InvoiceDate { get; private set; }
 
-    public string Currency { get; private set; } = string.Empty;
+    public string? Currency { get; private set; }
 
-    public decimal TotalAmount { get; private set; }
+    public decimal? TotalAmount { get; private set; }
 
     public InvoiceProcessingStatus ProcessingStatus { get; private set; }
 
@@ -85,6 +105,11 @@ public sealed class Invoice : ITenantScopedEntity
         decimal quantity,
         decimal unitPrice)
     {
+        if (VendorId is null || InvoiceNumber is null || InvoiceDate is null || Currency is null || TotalAmount is null)
+        {
+            throw new InvalidOperationException("Invoice lines cannot be added before header extraction is complete.");
+        }
+
         if (_lines.Any(line => line.LineNumber == lineNumber))
         {
             throw new InvalidOperationException($"Invoice line number {lineNumber} already exists.");

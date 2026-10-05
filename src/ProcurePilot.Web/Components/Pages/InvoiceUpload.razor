@@ -1,0 +1,144 @@
+@page "/invoices/upload"
+@using System.Security.Claims
+@using ProcurePilot.Application.Invoices.Upload
+@inject IInvoiceUploadService UploadService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<InvoiceUpload> Logger
+
+@attribute [Authorize(Policy = AuthorizationPolicies.InvoiceUpload)]
+
+<PageTitle>Upload Invoice | ProcurePilot</PageTitle>
+
+<header class="page-heading">
+    <div>
+        <p class="eyebrow">Invoices</p>
+        <h1>Upload an invoice</h1>
+        <p class="page-summary">Add the original supplier document before extraction and human review.</p>
+    </div>
+</header>
+
+<section class="upload-card" aria-labelledby="upload-heading">
+    <div class="upload-card-heading">
+        <div>
+            <p class="card-kicker">Original document</p>
+            <h2 id="upload-heading">Choose a file</h2>
+        </div>
+        <span class="step-badge">Step 1 of 3</span>
+    </div>
+
+    @if (_result is not null)
+    {
+        <div class="upload-result" role="status" aria-live="polite">
+            <span class="result-symbol" aria-hidden="true">✓</span>
+            <div>
+                <strong>Invoice queued for processing</strong>
+                <p>@_result.FileName (@FormatSize(_result.SizeBytes)) was stored securely. Reference: @_result.InvoiceId</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="upload-body">
+            <label class="file-picker">
+                <span class="file-picker-symbol pp-icon-purchase-order" aria-hidden="true"></span>
+                <span class="file-picker-copy">
+                    <strong>@(_selectedFile?.Name ?? "Select an invoice document")</strong>
+                    <span>@(_selectedFile is null ? "PDF, JPEG, or PNG — maximum 10 MB" : FormatSize(_selectedFile.Size))</span>
+                </span>
+                <span class="file-picker-action">Browse</span>
+                <InputFile id="invoice-file"
+                           class="visually-hidden"
+                           OnChange="SelectFile"
+                           accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" />
+            </label>
+
+            <div class="upload-guidance" aria-label="Upload requirements">
+                <div><span aria-hidden="true">01</span><p><strong>Original file</strong><br />Use the supplier-issued document.</p></div>
+                <div><span aria-hidden="true">02</span><p><strong>Private storage</strong><br />Access remains scoped to your tenant.</p></div>
+                <div><span aria-hidden="true">03</span><p><strong>Human review</strong><br />No financial decision is automated.</p></div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="upload-message" role="alert">
+                    <span aria-hidden="true">!</span>
+                    <p>@_errorMessage</p>
+                </div>
+            }
+
+            <div class="upload-actions">
+                <button class="btn btn-primary"
+                        type="button"
+                        disabled="@(_selectedFile is null || _isUploading)"
+                        @onclick="UploadAsync">
+                    @(_isUploading ? "Uploading…" : "Upload and start processing")
+                </button>
+                <p>The document is validated before it is stored.</p>
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    private IBrowserFile? _selectedFile;
+    private InvoiceUploadResult? _result;
+    private string? _errorMessage;
+    private bool _isUploading;
+
+    private void SelectFile(InputFileChangeEventArgs eventArgs)
+    {
+        _selectedFile = eventArgs.File;
+        _errorMessage = null;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (_selectedFile is null)
+        {
+            return;
+        }
+
+        _isUploading = true;
+        _errorMessage = null;
+        try
+        {
+            var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userIdValue = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdValue, out var userId))
+            {
+                throw new InvalidOperationException("The authenticated user identifier is missing.");
+            }
+
+            await using var stream = _selectedFile.OpenReadStream(InvoiceUploadLimits.MaxFileSizeBytes);
+            _result = await UploadService.UploadAsync(
+                new InvoiceUploadRequest(
+                    stream,
+                    _selectedFile.Name,
+                    _selectedFile.ContentType,
+                    _selectedFile.Size),
+                userId);
+        }
+        catch (InvoiceUploadValidationException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        catch (IOException exception)
+        {
+            Logger.LogWarning(exception, "Invoice upload was rejected by the browser file stream.");
+            _errorMessage = "The file is too large or could not be read. Choose a file up to 10 MB.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Invoice upload failed.");
+            _errorMessage = "The invoice could not be uploaded. Please try again.";
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private static string FormatSize(long bytes) => bytes < 1024 * 1024
+        ? $"{Math.Ceiling(bytes / 1024d):N0} KB"
+        : $"{bytes / 1024d / 1024d:N1} MB";
+}

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
+using ProcurePilot.Application.Security;
 using ProcurePilot.Domain.Tenancy;
 using ProcurePilot.Infrastructure.Identity;
 using ProcurePilot.Infrastructure.Persistence;
@@ -58,6 +60,18 @@ public sealed class IdentityBootstrapper(
         {
             var roleResult = await roleManager.CreateAsync(new IdentityRole<Guid>(AdministratorRole));
             EnsureSucceeded(roleResult, "create the Administrator role");
+            role = await roleManager.FindByNameAsync(AdministratorRole);
+        }
+
+        var roleClaims = await roleManager.GetClaimsAsync(role!);
+        if (!roleClaims.Any(claim =>
+                claim.Type == ProcurePilotPermissions.ClaimType &&
+                claim.Value == ProcurePilotPermissions.InvoiceUpload))
+        {
+            var permissionResult = await roleManager.AddClaimAsync(
+                role!,
+                new Claim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.InvoiceUpload));
+            EnsureSucceeded(permissionResult, "grant the Invoice.Upload permission");
         }
 
         var user = await userManager.FindByEmailAsync(bootstrap.Email!.Trim());

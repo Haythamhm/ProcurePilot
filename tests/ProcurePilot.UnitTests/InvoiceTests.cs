@@ -5,6 +5,48 @@ namespace ProcurePilot.UnitTests;
 public sealed class InvoiceTests
 {
     [Fact]
+    public void ProcessingInvoiceStartsWithoutInventedExtractedValues()
+    {
+        var invoice = Invoice.CreateProcessing(Guid.NewGuid(), Guid.NewGuid());
+
+        Assert.Equal(InvoiceProcessingStatus.Processing, invoice.ProcessingStatus);
+        Assert.Null(invoice.VendorId);
+        Assert.Null(invoice.InvoiceNumber);
+        Assert.Null(invoice.InvoiceDate);
+        Assert.Null(invoice.Currency);
+        Assert.Null(invoice.TotalAmount);
+        Assert.Throws<InvalidOperationException>(() =>
+            invoice.AddLine(Guid.NewGuid(), 1, "Premature line", 1m, 1m));
+    }
+
+    [Fact]
+    public void InvoiceDocumentPreservesTraceabilityMetadata()
+    {
+        var tenantId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var uploaderId = Guid.NewGuid();
+        var uploadedAt = new DateTimeOffset(2026, 10, 5, 20, 0, 0, TimeSpan.Zero);
+
+        var document = new InvoiceDocument(
+            Guid.NewGuid(),
+            tenantId,
+            invoiceId,
+            uploaderId,
+            " invoice.pdf ",
+            "APPLICATION/PDF",
+            42,
+            $"{tenantId:N}/{invoiceId:N}/document.pdf",
+            new string('A', 64),
+            uploadedAt);
+
+        Assert.Equal("invoice.pdf", document.OriginalFileName);
+        Assert.Equal("application/pdf", document.ContentType);
+        Assert.Equal(new string('a', 64), document.Sha256);
+        Assert.Equal(uploadedAt, document.UploadedAtUtc);
+        Assert.Equal(uploaderId, document.UploadedByUserId);
+    }
+
+    [Fact]
     public void NewInvoiceNormalizesHeaderStartsProcessingAndAddsLine()
     {
         var tenantId = Guid.NewGuid();

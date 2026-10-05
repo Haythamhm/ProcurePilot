@@ -159,16 +159,14 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Currency")
-                        .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("character(3)")
                         .IsFixedLength();
 
-                    b.Property<DateOnly>("InvoiceDate")
+                    b.Property<DateOnly?>("InvoiceDate")
                         .HasColumnType("date");
 
                     b.Property<string>("InvoiceNumber")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -180,11 +178,11 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("TotalAmount")
+                    b.Property<decimal?>("TotalAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<Guid>("VendorId")
+                    b.Property<Guid?>("VendorId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
@@ -192,9 +190,65 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "VendorId");
 
                     b.HasIndex("TenantId", "VendorId", "InvoiceNumber")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"VendorId\" IS NOT NULL AND \"InvoiceNumber\" IS NOT NULL");
 
                     b.ToTable("Invoices", (string)null);
+                });
+
+            modelBuilder.Entity("ProcurePilot.Domain.Invoices.InvoiceDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageReference")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UploadedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StorageReference")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "InvoiceId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "UploadedByUserId");
+
+                    b.ToTable("InvoiceDocuments", (string)null);
                 });
 
             modelBuilder.Entity("ProcurePilot.Domain.Invoices.InvoiceLine", b =>
@@ -501,6 +555,22 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                     b.HasOne("ProcurePilot.Domain.Vendors.Vendor", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "VendorId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("ProcurePilot.Domain.Invoices.InvoiceDocument", b =>
+                {
+                    b.HasOne("ProcurePilot.Domain.Invoices.Invoice", null)
+                        .WithOne()
+                        .HasForeignKey("ProcurePilot.Domain.Invoices.InvoiceDocument", "TenantId", "InvoiceId")
+                        .HasPrincipalKey("ProcurePilot.Domain.Invoices.Invoice", "TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "UploadedByUserId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();

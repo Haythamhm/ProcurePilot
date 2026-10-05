@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Azure.Storage.Blobs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ProcurePilot.Application.Purchasing;
@@ -7,6 +8,9 @@ using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Infrastructure.Identity;
 using ProcurePilot.Infrastructure.Persistence;
 using ProcurePilot.Infrastructure.Persistence.Queries;
+using ProcurePilot.Application.Invoices.Upload;
+using ProcurePilot.Infrastructure.Invoices;
+using ProcurePilot.Infrastructure.Storage;
 
 namespace ProcurePilot.Infrastructure;
 
@@ -14,9 +18,11 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        string connectionString)
+        string connectionString,
+        string invoiceBlobConnectionString)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        ArgumentException.ThrowIfNullOrWhiteSpace(invoiceBlobConnectionString);
 
         services.TryAddScoped<ITenantContext, NullTenantContext>();
 
@@ -26,6 +32,10 @@ public static class DependencyInjection
                 npgsql => npgsql.MigrationsAssembly(typeof(ProcurePilotDbContext).Assembly.FullName)));
 
         services.AddScoped<IPurchaseOrderQueries, PurchaseOrderQueries>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(new BlobServiceClient(invoiceBlobConnectionString));
+        services.AddScoped<IInvoiceDocumentStorage, AzureBlobInvoiceDocumentStorage>();
+        services.AddScoped<IInvoiceUploadService, InvoiceUploadService>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {

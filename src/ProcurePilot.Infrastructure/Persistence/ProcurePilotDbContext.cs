@@ -30,6 +30,8 @@ public sealed class ProcurePilotDbContext(
 
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
 
+    public DbSet<InvoiceDocument> InvoiceDocuments => Set<InvoiceDocument>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -48,6 +50,7 @@ public sealed class ProcurePilotDbContext(
         modelBuilder.Entity<ApplicationUser>(user =>
         {
             user.Property(value => value.DisplayName).HasMaxLength(200).IsRequired();
+            user.HasAlternateKey(value => new { value.TenantId, value.Id });
             user.HasIndex(value => value.TenantId);
             user.HasOne<Tenant>()
                 .WithMany()
@@ -147,18 +150,15 @@ public sealed class ProcurePilotDbContext(
             invoice.HasKey(value => value.Id);
             invoice.HasAlternateKey(value => new { value.TenantId, value.Id });
             invoice.Property(value => value.TenantId).IsRequired();
-            invoice.Property(value => value.VendorId).IsRequired();
+            invoice.Property(value => value.VendorId);
             invoice.Property(value => value.InvoiceNumber)
-                .HasMaxLength(Invoice.NumberMaxLength)
-                .IsRequired();
-            invoice.Property(value => value.InvoiceDate).IsRequired();
+                .HasMaxLength(Invoice.NumberMaxLength);
+            invoice.Property(value => value.InvoiceDate);
             invoice.Property(value => value.Currency)
                 .HasMaxLength(Invoice.CurrencyMaxLength)
-                .IsFixedLength()
-                .IsRequired();
+                .IsFixedLength();
             invoice.Property(value => value.TotalAmount)
-                .HasPrecision(18, 2)
-                .IsRequired();
+                .HasPrecision(18, 2);
             invoice.Property(value => value.ProcessingStatus)
                 .HasConversion<string>()
                 .HasMaxLength(Invoice.ProcessingStatusMaxLength)
@@ -169,7 +169,8 @@ public sealed class ProcurePilotDbContext(
                 value.VendorId,
                 value.InvoiceNumber
             })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("\"VendorId\" IS NOT NULL AND \"InvoiceNumber\" IS NOT NULL");
             invoice.HasIndex(value => new { value.TenantId, value.VendorId });
             invoice.HasOne<Vendor>()
                 .WithMany()
@@ -208,6 +209,42 @@ public sealed class ProcurePilotDbContext(
                 value.LineNumber
             })
                 .IsUnique();
+        });
+
+        modelBuilder.Entity<InvoiceDocument>(document =>
+        {
+            document.ToTable("InvoiceDocuments");
+            document.HasKey(value => value.Id);
+            document.Property(value => value.TenantId).IsRequired();
+            document.Property(value => value.InvoiceId).IsRequired();
+            document.Property(value => value.UploadedByUserId).IsRequired();
+            document.Property(value => value.OriginalFileName)
+                .HasMaxLength(InvoiceDocument.FileNameMaxLength)
+                .IsRequired();
+            document.Property(value => value.ContentType)
+                .HasMaxLength(InvoiceDocument.ContentTypeMaxLength)
+                .IsRequired();
+            document.Property(value => value.SizeBytes).IsRequired();
+            document.Property(value => value.StorageReference)
+                .HasMaxLength(InvoiceDocument.StorageReferenceMaxLength)
+                .IsRequired();
+            document.Property(value => value.Sha256)
+                .HasMaxLength(InvoiceDocument.Sha256MaxLength)
+                .IsFixedLength()
+                .IsRequired();
+            document.Property(value => value.UploadedAtUtc).IsRequired();
+            document.HasIndex(value => new { value.TenantId, value.InvoiceId }).IsUnique();
+            document.HasIndex(value => value.StorageReference).IsUnique();
+            document.HasOne<Invoice>()
+                .WithOne()
+                .HasForeignKey<InvoiceDocument>(value => new { value.TenantId, value.InvoiceId })
+                .HasPrincipalKey<Invoice>(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            document.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.UploadedByUserId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         ApplyTenantQueryFilters(modelBuilder);
