@@ -11,27 +11,38 @@
     <div>
         <p class="eyebrow">Purchasing</p>
         <h1>Purchase Orders</h1>
-        <p class="page-summary">Review purchase orders available to your tenant.</p>
+        <p class="page-summary">Review purchase orders and their line items for the active tenant.</p>
     </div>
 </header>
 
 @if (_isLoading)
 {
     <div class="state-card" role="status" aria-live="polite">
-        Loading purchase orders…
+        <span class="state-indicator" aria-hidden="true"></span>
+        <div>
+            <strong>Loading purchase orders</strong>
+            <p>Retrieving the tenant-scoped reference data…</p>
+        </div>
     </div>
 }
 else if (_loadFailed)
 {
     <div class="state-card state-card-error" role="alert">
-        Purchase orders could not be loaded. Please try again later.
+        <span class="state-symbol" aria-hidden="true">!</span>
+        <div>
+            <strong>Purchase orders could not be loaded</strong>
+            <p>Please try again later.</p>
+        </div>
     </div>
 }
 else if (_purchaseOrders.Count == 0)
 {
     <div class="state-card">
-        <h2>No purchase orders</h2>
-        <p>No purchase order is available for this tenant.</p>
+        <span class="state-symbol pp-icon-purchase-order" aria-hidden="true"></span>
+        <div>
+            <h2>No purchase orders</h2>
+            <p>No purchase order is available for this tenant.</p>
+        </div>
     </div>
 }
 else
@@ -44,7 +55,7 @@ else
             </div>
         </div>
 
-        <div class="table-responsive">
+        <div class="table-responsive" tabindex="0" aria-label="Scrollable purchase order table">
             <table class="po-table">
                 <caption class="visually-hidden">Purchase orders available to the active tenant</caption>
                 <thead>
@@ -60,10 +71,10 @@ else
                     @foreach (var purchaseOrder in _purchaseOrders)
                     {
                         <tr>
-                            <td><strong>@purchaseOrder.Number</strong></td>
+                            <th scope="row"><strong>@purchaseOrder.Number</strong></th>
                             <td>@purchaseOrder.VendorName</td>
                             <td>@purchaseOrder.OrderDate.ToString("yyyy-MM-dd")</td>
-                            <td><span class="status-badge">@purchaseOrder.Status</span></td>
+                            <td><span class="status-badge"><span aria-hidden="true"></span>@purchaseOrder.Status</span></td>
                             <td class="numeric">@purchaseOrder.TotalAmount.ToString("N2") @purchaseOrder.Currency</td>
                         </tr>
                         <tr class="line-details-row">

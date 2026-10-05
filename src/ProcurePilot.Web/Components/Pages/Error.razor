@@ -1,28 +1,27 @@
 ﻿@page "/Error"
 @using System.Diagnostics
+@inject NavigationManager Navigation
 
-<PageTitle>Error</PageTitle>
+<PageTitle>Application error | ProcurePilot</PageTitle>
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
-
-@if (ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@RequestId</code>
-    </p>
-}
-
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+<SystemState Eyebrow="Application status"
+             Marker="!"
+             Title="Something went wrong"
+             Description="The request could not be completed. Your financial data was not changed by this screen.">
+    <Details>
+        @if (ShowRequestId)
+        {
+            <p>Reference for support: <code>@RequestId</code></p>
+        }
+    </Details>
+    <Actions>
+        <a class="btn btn-primary" href="/">
+            <span class="pp-icon-home" aria-hidden="true"></span>
+            Return to workspace
+        </a>
+        <button class="btn btn-outline-secondary" type="button" @onclick="Reload">Try again</button>
+    </Actions>
+</SystemState>
 
 @code{
     [CascadingParameter]
@@ -33,4 +32,6 @@
 
     protected override void OnInitialized() =>
         RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+
+    private void Reload() => Navigation.Refresh(forceReload: true);
 }

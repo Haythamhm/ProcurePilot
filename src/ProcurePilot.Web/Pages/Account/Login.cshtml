@@ -8,31 +8,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sign in - ProcurePilot</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/assets/fontello/procurepilot-icons.css" />
     <link rel="stylesheet" href="~/app.css" />
 </head>
-<body>
-    <main class="container py-5" style="max-width: 32rem">
-        <h1 class="mb-3">Sign in to ProcurePilot</h1>
-        <p class="text-body-secondary">Use the account provisioned for your organization.</p>
-        <form method="post">
-            <input asp-for="ReturnUrl" type="hidden" />
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
-            <div class="mb-3">
-                <label asp-for="Input.Email" class="form-label"></label>
-                <input asp-for="Input.Email" class="form-control" autocomplete="username" autofocus />
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
+<body class="auth-body">
+    <main class="auth-shell">
+        <section class="auth-intro" aria-labelledby="auth-intro-title">
+            <a class="auth-brand" href="/" aria-label="ProcurePilot home">
+                ProcurePilot <span>AI</span>
+            </a>
+            <p class="eyebrow">Accounts payable workspace</p>
+            <h1 id="auth-intro-title">Resolve purchasing exceptions with clear evidence.</h1>
+            <p>Access the secure workspace provisioned for your organization.</p>
+            <ul class="auth-principles" aria-label="Workspace safeguards">
+                <li>Tenant-scoped access</li>
+                <li>Human-controlled decisions</li>
+                <li>Auditable activity</li>
+            </ul>
+        </section>
+
+        <section class="auth-panel" aria-labelledby="sign-in-title">
+            <div class="auth-panel-heading">
+                <span class="auth-panel-icon pp-icon-user" aria-hidden="true"></span>
+                <div>
+                    <p class="eyebrow">Secure access</p>
+                    <h2 id="sign-in-title">Sign in</h2>
+                </div>
             </div>
-            <div class="mb-3">
-                <label asp-for="Input.Password" class="form-label"></label>
-                <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
-                <span asp-validation-for="Input.Password" class="text-danger"></span>
-            </div>
-            <div class="form-check mb-3">
-                <input asp-for="Input.RememberMe" class="form-check-input" />
-                <label asp-for="Input.RememberMe" class="form-check-label"></label>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Sign in</button>
-        </form>
+            <p class="auth-panel-summary">Use the account provisioned for your organization.</p>
+            <form method="post">
+                <input asp-for="ReturnUrl" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+                <div class="form-field">
+                    <label asp-for="Input.Email" class="form-label"></label>
+                    <input asp-for="Input.Email" class="form-control" autocomplete="username" autofocus />
+                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                </div>
+                <div class="form-field">
+                    <label asp-for="Input.Password" class="form-label"></label>
+                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+                <div class="form-check auth-remember">
+                    <input asp-for="Input.RememberMe" class="form-check-input" />
+                    <label asp-for="Input.RememberMe" class="form-check-label"></label>
+                </div>
+                <button type="submit" class="btn btn-primary">Sign in</button>
+            </form>
+        </section>
     </main>
 </body>
 </html>

@@ -6,22 +6,26 @@
     </div>
 
     <main>
-        <div class="top-row px-4">
+        <div class="top-row">
+            <span class="workspace-context">Secure tenant workspace</span>
             <AuthorizeView>
                 <Authorized Context="authenticationState">
-                    <span class="signed-in-user">@authenticationState.User.Identity?.Name</span>
+                    <span class="signed-in-user">
+                        <span class="pp-icon-user" aria-hidden="true"></span>
+                        <span>@authenticationState.User.Identity?.Name</span>
+                    </span>
                 </Authorized>
             </AuthorizeView>
         </div>
 
-        <article class="content px-4">
+        <article class="content">
             @Body
         </article>
     </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
+    <strong>Application error.</strong> An unexpected problem occurred.
     <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <button class="dismiss" type="button" aria-label="Dismiss error">×</button>
 </div>
