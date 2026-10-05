@@ -1148,6 +1148,7 @@
       "procurepilot.application": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "[10.5.2, )",
           "ProcurePilot.Domain": "[1.0.0, )"
         }
       },
