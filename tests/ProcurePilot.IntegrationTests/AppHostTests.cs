@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProcurePilot.Application.Tenancy;
+using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
 using ProcurePilot.Domain.Vendors;
@@ -76,6 +77,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddPurchaseOrderMasterData", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddInvoiceDomain", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -117,12 +121,35 @@ public sealed class AppHostTests
         Assert.Equal(PurchaseOrderBootstrapper.DemoLineQuantity, demoLine.Quantity);
         Assert.Equal(PurchaseOrderBootstrapper.DemoLineUnitPrice, demoLine.UnitPrice);
 
+        var bootstrapInvoice = new Invoice(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            atlas.Id,
+            $"INV-INTEGRATION-{Guid.NewGuid():N}",
+            new DateOnly(2026, 10, 5),
+            "USD",
+            125m);
+        bootstrapInvoice.AddLine(Guid.NewGuid(), 1, "Persisted invoice line", 1m, 125m);
+        bootstrapTenantContext.Invoices.Add(bootstrapInvoice);
+        await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
+
+        await using var invoiceReadContext = new ProcurePilotDbContext(
+            options,
+            new TestTenantContext(bootstrapTenant.Id));
+        var persistedInvoice = await invoiceReadContext.Invoices
+            .Include(invoice => invoice.Lines)
+            .SingleAsync(invoice => invoice.Id == bootstrapInvoice.Id, cancellationToken);
+        Assert.Equal(InvoiceProcessingStatus.Processing, persistedInvoice.ProcessingStatus);
+        Assert.Equal("Persisted invoice line", Assert.Single(persistedInvoice.Lines).Description);
+
         await using var otherTenantContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(otherTenant.Id));
         Assert.Empty(await otherTenantContext.Vendors.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.PurchaseOrders.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.PurchaseOrderLines.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.Invoices.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.InvoiceLines.ToListAsync(cancellationToken));
 
         var otherTenantVendor = new Vendor(
             Guid.NewGuid(),
@@ -139,9 +166,23 @@ public sealed class AppHostTests
             "Open",
             25m);
         otherTenantPurchaseOrder.AddLine(Guid.NewGuid(), 1, "Tenant secret line", 1m, 25m);
+        var otherTenantInvoice = new Invoice(
+            Guid.NewGuid(),
+            otherTenant.Id,
+            otherTenantVendor.Id,
+            "INV-OTHER-TENANT",
+            new DateOnly(2026, 10, 5),
+            "USD",
+            25m);
+        otherTenantInvoice.AddLine(Guid.NewGuid(), 1, "Tenant secret invoice line", 1m, 25m);
         otherTenantContext.Vendors.Add(otherTenantVendor);
         otherTenantContext.PurchaseOrders.Add(otherTenantPurchaseOrder);
+        otherTenantContext.Invoices.Add(otherTenantInvoice);
         await otherTenantContext.SaveChangesAsync(cancellationToken);
+
+        Assert.DoesNotContain(
+            otherTenantInvoice.Id,
+            await invoiceReadContext.Invoices.Select(invoice => invoice.Id).ToListAsync(cancellationToken));
 
         otherTenantContext.Vendors.Add(new Vendor(
             Guid.NewGuid(),
@@ -167,6 +208,20 @@ public sealed class AppHostTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             crossTenantPurchaseOrderContext.SaveChangesAsync(cancellationToken));
 
+        await using var crossTenantInvoiceContext = new ProcurePilotDbContext(
+            options,
+            new TestTenantContext(otherTenant.Id));
+        crossTenantInvoiceContext.Invoices.Add(new Invoice(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            atlas.Id,
+            "CROSS-TENANT-INVOICE",
+            new DateOnly(2026, 10, 5),
+            "USD",
+            10m));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            crossTenantInvoiceContext.SaveChangesAsync(cancellationToken));
+
         await using var missingTenantContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(null));
@@ -174,6 +229,8 @@ public sealed class AppHostTests
         Assert.Empty(await missingTenantContext.Vendors.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.PurchaseOrders.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.PurchaseOrderLines.ToListAsync(cancellationToken));
+        Assert.Empty(await missingTenantContext.Invoices.ToListAsync(cancellationToken));
+        Assert.Empty(await missingTenantContext.InvoiceLines.ToListAsync(cancellationToken));
 
         using var invalidClient = app.CreateHttpClient("web", "http");
         var invalidLoginPage = await invalidClient.GetAsync("/account/login", cancellationToken);

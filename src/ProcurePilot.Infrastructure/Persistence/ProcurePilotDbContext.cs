@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Tenancy;
+using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
 using ProcurePilot.Domain.Vendors;
@@ -24,6 +25,10 @@ public sealed class ProcurePilotDbContext(
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
 
     public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
+
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -131,6 +136,75 @@ public sealed class ProcurePilotDbContext(
             {
                 value.TenantId,
                 value.PurchaseOrderId,
+                value.LineNumber
+            })
+                .IsUnique();
+        });
+
+        modelBuilder.Entity<Invoice>(invoice =>
+        {
+            invoice.ToTable("Invoices");
+            invoice.HasKey(value => value.Id);
+            invoice.HasAlternateKey(value => new { value.TenantId, value.Id });
+            invoice.Property(value => value.TenantId).IsRequired();
+            invoice.Property(value => value.VendorId).IsRequired();
+            invoice.Property(value => value.InvoiceNumber)
+                .HasMaxLength(Invoice.NumberMaxLength)
+                .IsRequired();
+            invoice.Property(value => value.InvoiceDate).IsRequired();
+            invoice.Property(value => value.Currency)
+                .HasMaxLength(Invoice.CurrencyMaxLength)
+                .IsFixedLength()
+                .IsRequired();
+            invoice.Property(value => value.TotalAmount)
+                .HasPrecision(18, 2)
+                .IsRequired();
+            invoice.Property(value => value.ProcessingStatus)
+                .HasConversion<string>()
+                .HasMaxLength(Invoice.ProcessingStatusMaxLength)
+                .IsRequired();
+            invoice.HasIndex(value => new
+            {
+                value.TenantId,
+                value.VendorId,
+                value.InvoiceNumber
+            })
+                .IsUnique();
+            invoice.HasIndex(value => new { value.TenantId, value.VendorId });
+            invoice.HasOne<Vendor>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.VendorId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            invoice.HasMany(value => value.Lines)
+                .WithOne()
+                .HasForeignKey(value => new { value.TenantId, value.InvoiceId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            invoice.Navigation(value => value.Lines)
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<InvoiceLine>(line =>
+        {
+            line.ToTable("InvoiceLines");
+            line.HasKey(value => value.Id);
+            line.Property(value => value.TenantId).IsRequired();
+            line.Property(value => value.InvoiceId).IsRequired();
+            line.Property(value => value.LineNumber).IsRequired();
+            line.Property(value => value.Description)
+                .HasMaxLength(InvoiceLine.DescriptionMaxLength)
+                .IsRequired();
+            line.Property(value => value.Quantity)
+                .HasPrecision(18, 4)
+                .IsRequired();
+            line.Property(value => value.UnitPrice)
+                .HasPrecision(18, 2)
+                .IsRequired();
+            line.HasIndex(value => new
+            {
+                value.TenantId,
+                value.InvoiceId,
                 value.LineNumber
             })
                 .IsUnique();
