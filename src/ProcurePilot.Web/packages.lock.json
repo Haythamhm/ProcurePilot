@@ -43,6 +43,11 @@
           "Microsoft.EntityFrameworkCore": "10.0.4"
         }
       },
+      "Microsoft.Extensions.AI.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.5.2",
+        "contentHash": "Ei+YWV9Ybnps7pR1dgjlG29gelXEwZkhLVAcWmKe6HvXS6LNBYgSdWiY3Hk9OZXYtK34rv/NtLWBQYQGOBQYPQ=="
+      },
       "Microsoft.Extensions.AmbientMetadata.Application": {
         "type": "Transitive",
         "resolved": "10.8.0",
@@ -222,6 +227,7 @@
       "procurepilot.application": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "[10.5.2, )",
           "ProcurePilot.Domain": "[1.0.0, )"
         }
       },
