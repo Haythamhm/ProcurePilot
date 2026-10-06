@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Domain.Invoices;
+using ProcurePilot.Domain.Matching;
 using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
 using ProcurePilot.Domain.Vendors;
@@ -34,6 +35,8 @@ public sealed class ProcurePilotDbContext(
     public DbSet<InvoiceDocument> InvoiceDocuments => Set<InvoiceDocument>();
 
     public DbSet<InvoiceExtractionSnapshot> InvoiceExtractionSnapshots => Set<InvoiceExtractionSnapshot>();
+
+    public DbSet<MatchingRule> MatchingRules => Set<MatchingRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -276,6 +279,45 @@ public sealed class ProcurePilotDbContext(
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, UserId = value.ReviewedByUserId })
                 .HasPrincipalKey(value => new { value.TenantId, UserId = value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MatchingRule>(rule =>
+        {
+            rule.ToTable("MatchingRules", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_MatchingRules_AllowedTolerancePercent",
+                    "\"AllowedTolerancePercent\" >= 0 AND \"AllowedTolerancePercent\" <= 100");
+                table.HasCheckConstraint(
+                    "CK_MatchingRules_Version",
+                    "\"Version\" > 0");
+                table.HasCheckConstraint(
+                    "CK_MatchingRules_EffectivePeriod",
+                    "\"EffectiveToUtc\" IS NULL OR \"EffectiveToUtc\" > \"EffectiveFromUtc\"");
+            });
+            rule.HasKey(value => value.Id);
+            rule.HasAlternateKey(value => new { value.TenantId, value.Id });
+            rule.Property(value => value.TenantId).IsRequired();
+            rule.Property(value => value.Type)
+                .HasConversion<string>()
+                .HasMaxLength(MatchingRule.RuleTypeMaxLength)
+                .IsRequired();
+            rule.Property(value => value.AllowedTolerancePercent)
+                .HasPrecision(7, MatchingRule.ToleranceScale)
+                .IsRequired();
+            rule.Property(value => value.Version).IsRequired();
+            rule.Property(value => value.EffectiveFromUtc).IsRequired();
+            rule.Property(value => value.EffectiveToUtc);
+            rule.Ignore(value => value.IsCurrent);
+            rule.HasIndex(value => new { value.TenantId, value.Type, value.Version })
+                .IsUnique();
+            rule.HasIndex(value => new { value.TenantId, value.Type })
+                .IsUnique()
+                .HasFilter("\"EffectiveToUtc\" IS NULL");
+            rule.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(value => value.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
