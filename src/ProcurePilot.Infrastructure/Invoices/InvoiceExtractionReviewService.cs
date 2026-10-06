@@ -175,6 +175,8 @@ internal sealed class InvoiceExtractionReviewService(
             throw new InvoiceReviewValidationException(exception.Message);
         }
 
+        dbContext.InvoiceLines.AddRange(invoice.Lines);
+
         var reviewed = new InvoiceExtractionResult
         {
             InvoiceNumber = Confirmed<string?>(command.InvoiceNumber),
