@@ -10,7 +10,7 @@ using ProcurePilot.Infrastructure.Persistence;
 namespace ProcurePilot.Infrastructure.Invoices;
 
 internal sealed class InvoiceExtractionReviewService(
-    ProcurePilotDbContext dbContext,
+    DbContextOptions<ProcurePilotDbContext> dbContextOptions,
     ITenantContext tenantContext,
     IOptions<InvoiceExtractionReviewOptions> options,
     TimeProvider timeProvider) : IInvoiceExtractionReviewService
@@ -27,6 +27,7 @@ internal sealed class InvoiceExtractionReviewService(
             return null;
         }
 
+        await using var dbContext = CreateDbContext();
         var invoice = await dbContext.Invoices
             .AsNoTracking()
             .SingleOrDefaultAsync(value => value.Id == invoiceId, cancellationToken);
@@ -71,6 +72,7 @@ internal sealed class InvoiceExtractionReviewService(
     {
         ArgumentNullException.ThrowIfNull(extraction);
         var tenantId = tenantContext.RequireTenantId();
+        await using var dbContext = CreateDbContext();
         var invoice = await dbContext.Invoices
             .SingleOrDefaultAsync(value => value.Id == invoiceId, cancellationToken)
             ?? throw new KeyNotFoundException("The invoice was not found for the active tenant.");
@@ -115,6 +117,7 @@ internal sealed class InvoiceExtractionReviewService(
         }
 
         var tenantId = tenantContext.RequireTenantId();
+        await using var dbContext = CreateDbContext();
         var reviewerExists = await dbContext.Users
             .AnyAsync(user => user.Id == reviewedByUserId, cancellationToken);
         if (!reviewerExists)
@@ -218,6 +221,9 @@ internal sealed class InvoiceExtractionReviewService(
 
     private static decimal CalculateLineTotal(decimal quantity, decimal unitPrice) =>
         decimal.Round(quantity * unitPrice, 2, MidpointRounding.AwayFromZero);
+
+    private ProcurePilotDbContext CreateDbContext() =>
+        new(dbContextOptions, tenantContext);
 
     private static InvoiceExtractionReviewOptions ValidateOptions(InvoiceExtractionReviewOptions options)
     {
