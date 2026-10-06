@@ -17,3 +17,4 @@ Implemented architecture notes:
 - [Invoice document upload](invoice-upload.md) — validated tenant-scoped object storage and metadata flow.
 - [Invoice extraction review](invoice-extraction-review.md) — auditable human correction and low-confidence gate before matching.
 - [Matching rule](matching-rule.md) — tenant-scoped and versioned price-tolerance configuration.
+- [Price variance matching](price-variance-matching.md) — deterministic, reproducible and tenant-safe line-price evaluation.

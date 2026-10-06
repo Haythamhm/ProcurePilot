@@ -101,6 +101,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddMatchingRule", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddPriceVarianceMatchResult", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -165,9 +168,23 @@ public sealed class AppHostTests
             $"INV-INTEGRATION-{Guid.NewGuid():N}",
             new DateOnly(2026, 10, 5),
             "USD",
-            125m);
-        bootstrapInvoice.AddLine(Guid.NewGuid(), 1, "Persisted invoice line", 1m, 125m);
+            131.25m);
+        var bootstrapInvoiceLine = bootstrapInvoice.AddLine(
+            Guid.NewGuid(),
+            1,
+            "Persisted invoice line",
+            1m,
+            131.25m);
         bootstrapTenantContext.Invoices.Add(bootstrapInvoice);
+        await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
+
+        var matchResult = MatchResult.EvaluatePriceVariance(
+            Guid.NewGuid(),
+            bootstrapInvoiceLine,
+            demoLine,
+            initialMatchingRule,
+            initialMatchingRule.EffectiveFromUtc.AddMinutes(1));
+        bootstrapTenantContext.MatchResults.Add(matchResult);
         await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
 
         await using var invoiceReadContext = new ProcurePilotDbContext(
@@ -196,6 +213,14 @@ public sealed class AppHostTests
                 Assert.Equal(2.5m, second.AllowedTolerancePercent);
                 Assert.True(second.IsCurrent);
             });
+
+        var persistedMatchResult = await invoiceReadContext.MatchResults.SingleAsync(cancellationToken);
+        Assert.Equal(MatchResultStatus.Failed, persistedMatchResult.Status);
+        Assert.Equal(MatchExceptionCode.PriceVariance, persistedMatchResult.ExceptionCode);
+        Assert.Equal(5m, persistedMatchResult.VariancePercent);
+        Assert.Equal(3m, persistedMatchResult.AllowedTolerancePercent);
+        Assert.Equal(1, persistedMatchResult.MatchingRuleVersion);
+        Assert.Equal(initialMatchingRule.Id, persistedMatchResult.MatchingRuleId);
 
         var bootstrapUser = await invoiceReadContext.Users
             .SingleAsync(user => user.Email == bootstrapEmail, cancellationToken);
@@ -296,6 +321,7 @@ public sealed class AppHostTests
         Assert.Empty(await otherTenantContext.InvoiceDocuments.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.InvoiceExtractionSnapshots.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.MatchingRules.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.MatchResults.ToListAsync(cancellationToken));
         Assert.DoesNotContain(
             uploadedInvoiceId,
             await otherTenantContext.InvoiceExtractionSnapshots
@@ -316,7 +342,12 @@ public sealed class AppHostTests
             "USD",
             "Open",
             25m);
-        otherTenantPurchaseOrder.AddLine(Guid.NewGuid(), 1, "Tenant secret line", 1m, 25m);
+        var otherTenantPurchaseOrderLine = otherTenantPurchaseOrder.AddLine(
+            Guid.NewGuid(),
+            1,
+            "Tenant secret line",
+            1m,
+            25m);
         var otherTenantInvoice = new Invoice(
             Guid.NewGuid(),
             otherTenant.Id,
@@ -325,21 +356,40 @@ public sealed class AppHostTests
             new DateOnly(2026, 10, 5),
             "USD",
             25m);
-        otherTenantInvoice.AddLine(Guid.NewGuid(), 1, "Tenant secret invoice line", 1m, 25m);
-        otherTenantContext.Vendors.Add(otherTenantVendor);
-        otherTenantContext.PurchaseOrders.Add(otherTenantPurchaseOrder);
-        otherTenantContext.Invoices.Add(otherTenantInvoice);
-        otherTenantContext.MatchingRules.Add(new MatchingRule(
+        var otherTenantInvoiceLine = otherTenantInvoice.AddLine(
+            Guid.NewGuid(),
+            1,
+            "Tenant secret invoice line",
+            1m,
+            25m);
+        var otherTenantRule = new MatchingRule(
             Guid.NewGuid(),
             otherTenant.Id,
             MatchingRuleType.PriceVariance,
             4m,
+            DateTimeOffset.UtcNow.AddMinutes(-1));
+        otherTenantContext.Vendors.Add(otherTenantVendor);
+        otherTenantContext.PurchaseOrders.Add(otherTenantPurchaseOrder);
+        otherTenantContext.Invoices.Add(otherTenantInvoice);
+        otherTenantContext.MatchingRules.Add(otherTenantRule);
+        await otherTenantContext.SaveChangesAsync(cancellationToken);
+
+        otherTenantContext.MatchResults.Add(MatchResult.EvaluatePriceVariance(
+            Guid.NewGuid(),
+            otherTenantInvoiceLine,
+            otherTenantPurchaseOrderLine,
+            otherTenantRule,
             DateTimeOffset.UtcNow));
         await otherTenantContext.SaveChangesAsync(cancellationToken);
 
         Assert.DoesNotContain(
             otherTenantInvoice.Id,
             await invoiceReadContext.Invoices.Select(invoice => invoice.Id).ToListAsync(cancellationToken));
+        Assert.DoesNotContain(
+            otherTenantInvoiceLine.Id,
+            await invoiceReadContext.MatchResults
+                .Select(result => result.InvoiceLineId)
+                .ToListAsync(cancellationToken));
 
         otherTenantContext.Vendors.Add(new Vendor(
             Guid.NewGuid(),
@@ -401,6 +451,7 @@ public sealed class AppHostTests
         Assert.Empty(await missingTenantContext.Invoices.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.InvoiceLines.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.MatchingRules.ToListAsync(cancellationToken));
+        Assert.Empty(await missingTenantContext.MatchResults.ToListAsync(cancellationToken));
 
         using var invalidClient = app.CreateHttpClient("web", "http");
         var invalidLoginPage = await invalidClient.GetAsync("/account/login", cancellationToken);
