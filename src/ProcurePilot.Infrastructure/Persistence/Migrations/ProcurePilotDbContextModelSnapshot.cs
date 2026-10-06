@@ -287,6 +287,54 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                     b.ToTable("InvoiceLines", (string)null);
                 });
 
+            modelBuilder.Entity("ProcurePilot.Domain.Matching.MatchingRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AllowedTolerancePercent")
+                        .HasPrecision(7, 4)
+                        .HasColumnType("numeric(7,4)");
+
+                    b.Property<DateTimeOffset>("EffectiveFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("EffectiveToUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    b.HasIndex("TenantId", "Type")
+                        .IsUnique()
+                        .HasFilter("\"EffectiveToUtc\" IS NULL");
+
+                    b.HasIndex("TenantId", "Type", "Version")
+                        .IsUnique();
+
+                    b.ToTable("MatchingRules", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MatchingRules_AllowedTolerancePercent", "\"AllowedTolerancePercent\" >= 0 AND \"AllowedTolerancePercent\" <= 100");
+
+                            t.HasCheckConstraint("CK_MatchingRules_EffectivePeriod", "\"EffectiveToUtc\" IS NULL OR \"EffectiveToUtc\" > \"EffectiveFromUtc\"");
+
+                            t.HasCheckConstraint("CK_MatchingRules_Version", "\"Version\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("ProcurePilot.Domain.Purchasing.PurchaseOrder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -623,6 +671,15 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TenantId", "InvoiceId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ProcurePilot.Domain.Matching.MatchingRule", b =>
+                {
+                    b.HasOne("ProcurePilot.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

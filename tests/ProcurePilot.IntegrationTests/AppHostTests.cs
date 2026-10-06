@@ -12,6 +12,7 @@ using ProcurePilot.Application.Invoices.Upload;
 using ProcurePilot.Application.Invoices.Extraction;
 using ProcurePilot.Application.Invoices.Review;
 using ProcurePilot.Domain.Invoices;
+using ProcurePilot.Domain.Matching;
 using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
 using ProcurePilot.Domain.Vendors;
@@ -30,7 +31,9 @@ public sealed class AppHostTests
     [Fact]
     public async Task IdentityMasterDataMigrationsTenantIsolationAndLoginWorkAgainstPostgreSql()
     {
-        const string bootstrapEmail = "admin@integration.local";
+        var runId = Guid.NewGuid().ToString("N");
+        var bootstrapTenantName = $"Integration Tenant {runId}";
+        var bootstrapEmail = $"admin-{runId}@integration.local";
         const string bootstrapPassword = "ProcurePilot!42";
 
         using var cancellationTokenSource = new CancellationTokenSource(DefaultTimeout);
@@ -60,6 +63,7 @@ public sealed class AppHostTests
         await SeedDemoDataAsync(
             connectionString,
             invoiceBlobConnectionString,
+            bootstrapTenantName,
             bootstrapEmail,
             bootstrapPassword,
             cancellationToken);
@@ -94,6 +98,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddInvoiceExtractionReview", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddMatchingRule", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -102,7 +109,7 @@ public sealed class AppHostTests
 
         var bootstrapTenant = await dbContext.Tenants
             .IgnoreQueryFilters()
-            .SingleAsync(tenant => tenant.Name == "Integration Tenant", cancellationToken);
+            .SingleAsync(tenant => tenant.Name == bootstrapTenantName, cancellationToken);
         var otherTenant = new Tenant(Guid.NewGuid(), $"Other Tenant {Guid.NewGuid():N}");
         dbContext.Tenants.Add(otherTenant);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -135,6 +142,22 @@ public sealed class AppHostTests
         Assert.Equal(PurchaseOrderBootstrapper.DemoLineQuantity, demoLine.Quantity);
         Assert.Equal(PurchaseOrderBootstrapper.DemoLineUnitPrice, demoLine.UnitPrice);
 
+        var initialMatchingRule = new MatchingRule(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            MatchingRuleType.PriceVariance,
+            3m,
+            new DateTimeOffset(2026, 10, 6, 8, 0, 0, TimeSpan.Zero));
+        bootstrapTenantContext.MatchingRules.Add(initialMatchingRule);
+        await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
+
+        var currentMatchingRule = initialMatchingRule.CreateNextVersion(
+            Guid.NewGuid(),
+            2.5m,
+            initialMatchingRule.EffectiveFromUtc.AddDays(30));
+        bootstrapTenantContext.MatchingRules.Add(currentMatchingRule);
+        await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
+
         var bootstrapInvoice = new Invoice(
             Guid.NewGuid(),
             bootstrapTenant.Id,
@@ -155,6 +178,24 @@ public sealed class AppHostTests
             .SingleAsync(invoice => invoice.Id == bootstrapInvoice.Id, cancellationToken);
         Assert.Equal(InvoiceProcessingStatus.Processing, persistedInvoice.ProcessingStatus);
         Assert.Equal("Persisted invoice line", Assert.Single(persistedInvoice.Lines).Description);
+
+        var persistedMatchingRules = await invoiceReadContext.MatchingRules
+            .OrderBy(rule => rule.Version)
+            .ToListAsync(cancellationToken);
+        Assert.Collection(
+            persistedMatchingRules,
+            first =>
+            {
+                Assert.Equal(1, first.Version);
+                Assert.Equal(3m, first.AllowedTolerancePercent);
+                Assert.False(first.IsCurrent);
+            },
+            second =>
+            {
+                Assert.Equal(2, second.Version);
+                Assert.Equal(2.5m, second.AllowedTolerancePercent);
+                Assert.True(second.IsCurrent);
+            });
 
         var bootstrapUser = await invoiceReadContext.Users
             .SingleAsync(user => user.Email == bootstrapEmail, cancellationToken);
@@ -254,6 +295,7 @@ public sealed class AppHostTests
         Assert.Empty(await otherTenantContext.InvoiceLines.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.InvoiceDocuments.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.InvoiceExtractionSnapshots.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.MatchingRules.ToListAsync(cancellationToken));
         Assert.DoesNotContain(
             uploadedInvoiceId,
             await otherTenantContext.InvoiceExtractionSnapshots
@@ -287,6 +329,12 @@ public sealed class AppHostTests
         otherTenantContext.Vendors.Add(otherTenantVendor);
         otherTenantContext.PurchaseOrders.Add(otherTenantPurchaseOrder);
         otherTenantContext.Invoices.Add(otherTenantInvoice);
+        otherTenantContext.MatchingRules.Add(new MatchingRule(
+            Guid.NewGuid(),
+            otherTenant.Id,
+            MatchingRuleType.PriceVariance,
+            4m,
+            DateTimeOffset.UtcNow));
         await otherTenantContext.SaveChangesAsync(cancellationToken);
 
         Assert.DoesNotContain(
@@ -331,6 +379,18 @@ public sealed class AppHostTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             crossTenantInvoiceContext.SaveChangesAsync(cancellationToken));
 
+        await using var crossTenantMatchingRuleContext = new ProcurePilotDbContext(
+            options,
+            new TestTenantContext(otherTenant.Id));
+        crossTenantMatchingRuleContext.MatchingRules.Add(new MatchingRule(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            MatchingRuleType.PriceVariance,
+            3m,
+            DateTimeOffset.UtcNow));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            crossTenantMatchingRuleContext.SaveChangesAsync(cancellationToken));
+
         await using var missingTenantContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(null));
@@ -340,6 +400,7 @@ public sealed class AppHostTests
         Assert.Empty(await missingTenantContext.PurchaseOrderLines.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.Invoices.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.InvoiceLines.ToListAsync(cancellationToken));
+        Assert.Empty(await missingTenantContext.MatchingRules.ToListAsync(cancellationToken));
 
         using var invalidClient = app.CreateHttpClient("web", "http");
         var invalidLoginPage = await invalidClient.GetAsync("/account/login", cancellationToken);
@@ -438,6 +499,7 @@ public sealed class AppHostTests
     private static async Task SeedDemoDataAsync(
         string connectionString,
         string invoiceBlobConnectionString,
+        string tenantName,
         string email,
         string password,
         CancellationToken cancellationToken)
@@ -452,7 +514,7 @@ public sealed class AppHostTests
         await using var scope = serviceProvider.CreateAsyncScope();
         var bootstrapOptions = Options.Create(new IdentityBootstrapOptions
         {
-            TenantName = "Integration Tenant",
+            TenantName = tenantName,
             Email = email,
             Password = password,
             DisplayName = "Integration Admin"
