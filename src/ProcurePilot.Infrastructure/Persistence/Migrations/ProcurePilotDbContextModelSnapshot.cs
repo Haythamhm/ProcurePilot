@@ -287,6 +287,77 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                     b.ToTable("InvoiceLines", (string)null);
                 });
 
+            modelBuilder.Entity("ProcurePilot.Domain.Matching.MatchResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AllowedTolerancePercent")
+                        .HasPrecision(7, 4)
+                        .HasColumnType("numeric(7,4)");
+
+                    b.Property<DateTimeOffset>("EvaluatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExceptionCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("InvoiceLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("InvoiceUnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("MatchingRuleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("MatchingRuleVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PurchaseOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("PurchaseOrderUnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("VariancePercent")
+                        .HasPrecision(29, 4)
+                        .HasColumnType("numeric(29,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    b.HasIndex("TenantId", "InvoiceLineId");
+
+                    b.HasIndex("TenantId", "MatchingRuleId");
+
+                    b.HasIndex("TenantId", "PurchaseOrderLineId");
+
+                    b.ToTable("MatchResults", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MatchResults_AllowedTolerancePercent", "\"AllowedTolerancePercent\" >= 0 AND \"AllowedTolerancePercent\" <= 100");
+
+                            t.HasCheckConstraint("CK_MatchResults_MatchingRuleVersion", "\"MatchingRuleVersion\" > 0");
+
+                            t.HasCheckConstraint("CK_MatchResults_Outcome", "(\"Status\" = 'Passed' AND \"ExceptionCode\" IS NULL) OR (\"Status\" = 'Failed' AND \"ExceptionCode\" = 'PriceVariance')");
+
+                            t.HasCheckConstraint("CK_MatchResults_Prices", "\"InvoiceUnitPrice\" >= 0 AND \"PurchaseOrderUnitPrice\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("ProcurePilot.Domain.Matching.MatchingRule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -315,8 +386,6 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasAlternateKey("TenantId", "Id");
 
                     b.HasIndex("TenantId", "Type")
                         .IsUnique()
@@ -671,6 +740,36 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TenantId", "InvoiceId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ProcurePilot.Domain.Matching.MatchResult", b =>
+                {
+                    b.HasOne("ProcurePilot.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Domain.Invoices.InvoiceLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "InvoiceLineId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Domain.Matching.MatchingRule", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "MatchingRuleId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Domain.Purchasing.PurchaseOrderLine", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "PurchaseOrderLineId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

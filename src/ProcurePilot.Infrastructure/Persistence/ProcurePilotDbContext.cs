@@ -38,6 +38,8 @@ public sealed class ProcurePilotDbContext(
 
     public DbSet<MatchingRule> MatchingRules => Set<MatchingRule>();
 
+    public DbSet<MatchResult> MatchResults => Set<MatchResult>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -129,6 +131,7 @@ public sealed class ProcurePilotDbContext(
         {
             line.ToTable("PurchaseOrderLines");
             line.HasKey(value => value.Id);
+            line.HasAlternateKey(value => new { value.TenantId, value.Id });
             line.Property(value => value.TenantId).IsRequired();
             line.Property(value => value.PurchaseOrderId).IsRequired();
             line.Property(value => value.LineNumber).IsRequired();
@@ -196,6 +199,7 @@ public sealed class ProcurePilotDbContext(
         {
             line.ToTable("InvoiceLines");
             line.HasKey(value => value.Id);
+            line.HasAlternateKey(value => new { value.TenantId, value.Id });
             line.Property(value => value.TenantId).IsRequired();
             line.Property(value => value.InvoiceId).IsRequired();
             line.Property(value => value.LineNumber).IsRequired();
@@ -316,6 +320,75 @@ public sealed class ProcurePilotDbContext(
                 .IsUnique()
                 .HasFilter("\"EffectiveToUtc\" IS NULL");
             rule.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(value => value.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MatchResult>(result =>
+        {
+            result.ToTable("MatchResults", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_MatchResults_Prices",
+                    "\"InvoiceUnitPrice\" >= 0 AND \"PurchaseOrderUnitPrice\" > 0");
+                table.HasCheckConstraint(
+                    "CK_MatchResults_AllowedTolerancePercent",
+                    "\"AllowedTolerancePercent\" >= 0 AND \"AllowedTolerancePercent\" <= 100");
+                table.HasCheckConstraint(
+                    "CK_MatchResults_MatchingRuleVersion",
+                    "\"MatchingRuleVersion\" > 0");
+                table.HasCheckConstraint(
+                    "CK_MatchResults_Outcome",
+                    "(\"Status\" = 'Passed' AND \"ExceptionCode\" IS NULL) OR " +
+                    "(\"Status\" = 'Failed' AND \"ExceptionCode\" = 'PriceVariance')");
+            });
+            result.HasKey(value => value.Id);
+            result.HasAlternateKey(value => new { value.TenantId, value.Id });
+            result.Property(value => value.TenantId).IsRequired();
+            result.Property(value => value.InvoiceLineId).IsRequired();
+            result.Property(value => value.PurchaseOrderLineId).IsRequired();
+            result.Property(value => value.MatchingRuleId).IsRequired();
+            result.Property(value => value.MatchingRuleVersion).IsRequired();
+            result.Property(value => value.InvoiceUnitPrice)
+                .HasPrecision(18, 2)
+                .IsRequired();
+            result.Property(value => value.PurchaseOrderUnitPrice)
+                .HasPrecision(18, 2)
+                .IsRequired();
+            result.Property(value => value.AllowedTolerancePercent)
+                .HasPrecision(7, MatchingRule.ToleranceScale)
+                .IsRequired();
+            result.Property(value => value.VariancePercent)
+                .HasPrecision(29, MatchResult.VarianceScale)
+                .IsRequired();
+            result.Property(value => value.Status)
+                .HasConversion<string>()
+                .HasMaxLength(MatchResult.StatusMaxLength)
+                .IsRequired();
+            result.Property(value => value.ExceptionCode)
+                .HasConversion<string>()
+                .HasMaxLength(MatchResult.ExceptionCodeMaxLength);
+            result.Property(value => value.EvaluatedAtUtc).IsRequired();
+            result.HasIndex(value => new { value.TenantId, value.InvoiceLineId });
+            result.HasIndex(value => new { value.TenantId, value.PurchaseOrderLineId });
+            result.HasIndex(value => new { value.TenantId, value.MatchingRuleId });
+            result.HasOne<InvoiceLine>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.InvoiceLineId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            result.HasOne<PurchaseOrderLine>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.PurchaseOrderLineId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            result.HasOne<MatchingRule>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.MatchingRuleId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            result.HasOne<Tenant>()
                 .WithMany()
                 .HasForeignKey(value => value.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
