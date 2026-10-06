@@ -98,6 +98,22 @@ public sealed partial class FrontendDesignSystemTests
         Assert.Contains("type=\"button\"", reconnectModal, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WorkspaceAndExtractionReviewUseRealApplicationServices()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var pagesRoot = Path.Combine(repositoryRoot, "src", "ProcurePilot.Web", "Components", "Pages");
+        var home = File.ReadAllText(Path.Combine(pagesRoot, "Home.razor"));
+        var review = File.ReadAllText(Path.Combine(pagesRoot, "InvoiceExtractionReview.razor"));
+
+        Assert.Contains("IWorkspaceDashboardQueries", home, StringComparison.Ordinal);
+        Assert.Contains("RecentInvoices", home, StringComparison.Ordinal);
+        Assert.DoesNotContain("TODO", home, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("IInvoiceExtractionReviewService", review, StringComparison.Ordinal);
+        Assert.Contains("ConfirmLowConfidenceFields", review, StringComparison.Ordinal);
+        Assert.Contains("aria-current=\"step\"", review, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

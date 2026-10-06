@@ -1,0 +1,13 @@
+@using ProcurePilot.Application.Invoices.Review
+
+<span class="confidence-badge" aria-label="@Field confidence @Confidence.ToString("P0")">
+    @Confidence.ToString("P0")
+</span>
+
+@code {
+    [Parameter]
+    public InvoiceExtractionField Field { get; set; }
+
+    [Parameter]
+    public double Confidence { get; set; }
+}

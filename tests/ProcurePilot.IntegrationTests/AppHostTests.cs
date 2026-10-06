@@ -9,6 +9,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Application.Invoices.Upload;
+using ProcurePilot.Application.Invoices.Extraction;
+using ProcurePilot.Application.Invoices.Review;
 using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
@@ -89,6 +91,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddInvoiceDocumentUpload", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddInvoiceExtractionReview", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -157,8 +162,22 @@ public sealed class AppHostTests
         uploadServices.AddLogging();
         uploadServices.AddDataProtection();
         uploadServices.AddScoped<ITenantContext>(_ => new TestTenantContext(bootstrapTenant.Id));
+        uploadServices.Configure<InvoiceExtractionReviewOptions>(options =>
+        {
+            options.ConfidenceThreshold = 0.8;
+            options.CriticalFields =
+            [
+                "InvoiceNumber",
+                "SupplierName",
+                "PurchaseOrderNumber",
+                "InvoiceDate",
+                "Currency",
+                "TotalAmount"
+            ];
+        });
         uploadServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
 
+        Guid uploadedInvoiceId;
         await using (var uploadProvider = uploadServices.BuildServiceProvider())
         await using (var uploadScope = uploadProvider.CreateAsyncScope())
         {
@@ -170,6 +189,34 @@ public sealed class AppHostTests
                     new InvoiceUploadRequest(pdfStream, "supplier-invoice.pdf", "application/pdf", pdfBytes.Length),
                     bootstrapUser.Id,
                     cancellationToken);
+            uploadedInvoiceId = upload.InvoiceId;
+
+            var reviewService = uploadScope.ServiceProvider
+                .GetRequiredService<IInvoiceExtractionReviewService>();
+            await reviewService.SaveExtractionAsync(
+                upload.InvoiceId,
+                CreateLowConfidenceExtraction(),
+                cancellationToken);
+
+            var unconfirmedCommand = new ConfirmInvoiceExtractionCommand(
+                upload.InvoiceId,
+                atlas.Id,
+                "INV-REVIEWED-42",
+                PurchaseOrderBootstrapper.DemoNumber,
+                new DateOnly(2026, 10, 6),
+                "USD",
+                100m,
+                20m,
+                120m,
+                [new ConfirmInvoiceLineCommand(1, "Control module", 1m, 100m)],
+                ConfirmLowConfidenceFields: false);
+            await Assert.ThrowsAsync<InvoiceReviewValidationException>(() =>
+                reviewService.ConfirmAsync(unconfirmedCommand, bootstrapUser.Id, cancellationToken));
+
+            await reviewService.ConfirmAsync(
+                unconfirmedCommand with { ConfirmLowConfidenceFields = true },
+                bootstrapUser.Id,
+                cancellationToken);
 
             await using var uploadReadContext = new ProcurePilotDbContext(
                 options,
@@ -179,8 +226,8 @@ public sealed class AppHostTests
             var uploadedDocument = await uploadReadContext.InvoiceDocuments
                 .SingleAsync(document => document.Id == upload.DocumentId, cancellationToken);
 
-            Assert.Equal(InvoiceProcessingStatus.Processing, uploadedInvoice.ProcessingStatus);
-            Assert.Null(uploadedInvoice.InvoiceNumber);
+            Assert.Equal(InvoiceProcessingStatus.Ready, uploadedInvoice.ProcessingStatus);
+            Assert.Equal("INV-REVIEWED-42", uploadedInvoice.InvoiceNumber);
             Assert.Equal(bootstrapUser.Id, uploadedDocument.UploadedByUserId);
             Assert.Equal("supplier-invoice.pdf", uploadedDocument.OriginalFileName);
             Assert.StartsWith($"{bootstrapTenant.Id:N}/{upload.InvoiceId:N}/", uploadedDocument.StorageReference);
@@ -189,6 +236,12 @@ public sealed class AppHostTests
                 .GetBlobContainerClient("invoice-documents")
                 .GetBlobClient(uploadedDocument.StorageReference);
             Assert.True(await blob.ExistsAsync(cancellationToken));
+
+            var extractionSnapshot = await uploadReadContext.InvoiceExtractionSnapshots
+                .SingleAsync(snapshot => snapshot.InvoiceId == upload.InvoiceId, cancellationToken);
+            Assert.Equal(bootstrapUser.Id, extractionSnapshot.ReviewedByUserId);
+            Assert.NotNull(extractionSnapshot.ReviewedAtUtc);
+            Assert.NotNull(extractionSnapshot.ReviewedPayload);
         }
 
         await using var otherTenantContext = new ProcurePilotDbContext(
@@ -200,6 +253,12 @@ public sealed class AppHostTests
         Assert.Empty(await otherTenantContext.Invoices.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.InvoiceLines.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.InvoiceDocuments.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.InvoiceExtractionSnapshots.ToListAsync(cancellationToken));
+        Assert.DoesNotContain(
+            uploadedInvoiceId,
+            await otherTenantContext.InvoiceExtractionSnapshots
+                .Select(snapshot => snapshot.InvoiceId)
+                .ToListAsync(cancellationToken));
 
         var otherTenantVendor = new Vendor(
             Guid.NewGuid(),
@@ -346,6 +405,35 @@ public sealed class AppHostTests
         Assert.True(match.Success, "The login page did not render an antiforgery token.");
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }
+
+    private static InvoiceExtractionResult CreateLowConfidenceExtraction() => new()
+    {
+        InvoiceNumber = Extracted<string?>("INV-AI-42", 0.62),
+        SupplierName = Extracted<string?>(VendorBootstrapper.AtlasName, 0.98),
+        PurchaseOrderNumber = Extracted<string?>(PurchaseOrderBootstrapper.DemoNumber, 0.97),
+        InvoiceDate = Extracted<DateOnly?>(new DateOnly(2026, 10, 6), 0.96),
+        Currency = Extracted<string?>("USD", 0.99),
+        SubtotalAmount = Extracted<decimal?>(100m, 0.95),
+        TaxAmount = Extracted<decimal?>(20m, 0.95),
+        TotalAmount = Extracted<decimal?>(120m, 0.99),
+        LineItems =
+        [
+            new InvoiceLineExtraction
+            {
+                LineNumber = 1,
+                Description = Extracted<string?>("Control module", 0.94),
+                Quantity = Extracted<decimal?>(1m, 0.98),
+                UnitPrice = Extracted<decimal?>(100m, 0.97),
+                LineTotal = Extracted<decimal?>(100m, 0.97)
+            }
+        ]
+    };
+
+    private static ExtractedField<T> Extracted<T>(T value, double confidence) => new()
+    {
+        Value = value,
+        Confidence = confidence
+    };
 
     private static async Task SeedDemoDataAsync(
         string connectionString,

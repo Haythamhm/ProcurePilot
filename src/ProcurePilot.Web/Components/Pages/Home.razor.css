@@ -1,12 +1,16 @@
-.page-heading {
+.dashboard-heading {
+    align-items: flex-end;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: space-between;
     margin-bottom: 2rem;
-    max-width: 48rem;
 }
 
-.page-heading h1 {
+.dashboard-heading h1 {
     font-size: clamp(2rem, 4vw, 3rem);
-    line-height: 1.1;
+    line-height: 1.08;
     margin: 0;
+    max-width: 44rem;
 }
 
 .page-summary {
@@ -15,114 +19,347 @@
     margin: 0.65rem 0 0;
 }
 
-.home-grid {
-    display: grid;
-    gap: 1.25rem;
-    grid-template-columns: minmax(0, 1.45fr) minmax(17rem, 0.55fr);
+.dashboard-action {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 0.55rem;
+    min-height: 2.9rem;
 }
 
-.feature-card,
-.session-card {
+.dashboard-state {
+    align-items: center;
+    border: 1px solid var(--pp-muted);
+    border-radius: 0.85rem;
+    color: var(--pp-primary);
+    display: flex;
+    gap: 0.75rem;
+    padding: 1.25rem;
+}
+
+.dashboard-spinner {
+    animation: spin 0.8s linear infinite;
+    border: 2px solid var(--pp-muted);
+    border-radius: 50%;
+    border-top-color: var(--pp-primary);
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.metric-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 1.25rem;
+}
+
+.metric-card {
+    align-items: flex-start;
     background: var(--pp-surface);
     border: 1px solid var(--pp-muted);
     border-radius: 1rem;
-}
-
-.feature-card {
-    align-items: flex-start;
     display: flex;
-    gap: 1.25rem;
-    min-height: 18rem;
-    padding: clamp(1.5rem, 4vw, 2.5rem);
+    gap: 1rem;
+    min-height: 9rem;
+    padding: 1.25rem;
 }
 
-.feature-card-icon {
+.metric-card.attention {
+    background: var(--pp-light);
+    border-color: var(--pp-primary);
+}
+
+.metric-icon {
     align-items: center;
     background: var(--pp-ink);
-    border-radius: 0.85rem;
+    border-radius: 0.7rem;
     color: var(--pp-surface);
     display: inline-flex;
-    flex: 0 0 3.25rem;
-    font-size: 1.2rem;
-    height: 3.25rem;
+    flex: 0 0 2.6rem;
+    font-size: 0.9rem;
+    font-weight: 900;
+    height: 2.6rem;
     justify-content: center;
 }
 
-.feature-card h2,
-.session-card h2 {
-    font-size: 1.25rem;
+.metric-card p {
+    color: var(--pp-primary);
+    font-size: 0.78rem;
+    font-weight: 800;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.metric-card strong {
+    color: var(--pp-ink);
+    display: block;
+    font-size: 2rem;
+    line-height: 1.05;
+    margin: 0.4rem 0;
+}
+
+.metric-card small {
+    color: var(--pp-primary);
+}
+
+.dashboard-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: minmax(0, 1.65fr) minmax(17rem, 0.65fr);
+}
+
+.activity-panel,
+.quick-panel {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.panel-heading {
+    align-items: center;
+    border-bottom: 1px solid var(--pp-muted);
+    display: flex;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+}
+
+.panel-heading h2,
+.quick-panel h2 {
+    font-size: 1.2rem;
     margin: 0;
 }
 
-.feature-card p:not(.card-kicker) {
+.panel-heading > a {
     color: var(--pp-primary);
-    margin: 0.75rem 0 2rem;
-    max-width: 34rem;
-}
-
-.primary-link {
-    align-items: center;
-    background: var(--pp-primary);
-    border: 1px solid var(--pp-primary);
-    border-radius: 0.65rem;
-    color: var(--pp-surface);
-    display: inline-flex;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 800;
-    gap: 0.75rem;
-    min-height: 2.75rem;
-    padding: 0.65rem 0.9rem;
     text-decoration: none;
 }
 
-.primary-link:hover,
-.primary-link:focus-visible {
+.panel-heading > a:hover,
+.panel-heading > a:focus-visible {
+    color: var(--pp-ink);
+    text-decoration: underline;
+}
+
+.activity-list {
+    display: grid;
+}
+
+.activity-row {
+    align-items: center;
+    border-bottom: 1px solid var(--pp-muted);
+    color: var(--pp-ink);
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    min-height: 4.75rem;
+    padding: 0.85rem 1.5rem;
+    text-decoration: none;
+}
+
+.activity-row:last-child {
+    border-bottom: 0;
+}
+
+.activity-row:hover,
+.activity-row:focus-visible {
+    background: var(--pp-light);
+}
+
+.file-mark {
+    align-items: center;
+    background: var(--pp-ink);
+    border-radius: 0.65rem;
+    color: var(--pp-surface);
+    display: flex;
+    font-size: 0.8rem;
+    font-weight: 900;
+    height: 2.5rem;
+    justify-content: center;
+    width: 2.5rem;
+}
+
+.activity-copy {
+    display: grid;
+    min-width: 0;
+}
+
+.activity-copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.activity-copy small {
+    color: var(--pp-primary);
+    margin-top: 0.2rem;
+}
+
+.status-pill {
+    border: 1px solid var(--pp-primary);
+    border-radius: 999px;
+    color: var(--pp-primary);
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0.3rem 0.55rem;
+    white-space: nowrap;
+}
+
+.status-ready {
     background: var(--pp-ink);
     border-color: var(--pp-ink);
     color: var(--pp-surface);
 }
 
-.session-card {
+.row-arrow {
+    color: var(--pp-primary);
+    font-weight: 900;
+}
+
+.empty-activity {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    min-height: 11rem;
+    padding: 2rem;
+}
+
+.empty-activity > span {
+    color: var(--pp-muted);
+    font-size: 2rem;
+    font-weight: 900;
+}
+
+.empty-activity p {
+    color: var(--pp-primary);
+    margin: 0.35rem 0 0;
+}
+
+.quick-panel {
     padding: 1.5rem;
 }
 
-.session-card dl {
-    margin: 1.5rem 0 0;
+.quick-panel h2 {
+    margin-bottom: 1.25rem;
 }
 
-.session-card dl > div {
+.quick-panel > a {
+    align-items: center;
     border-top: 1px solid var(--pp-muted);
-    padding: 1rem 0;
-}
-
-.session-card dt {
-    color: var(--pp-primary);
-    font-size: 0.75rem;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.session-card dd {
     color: var(--pp-ink);
-    font-size: 0.875rem;
-    font-weight: 700;
-    margin: 0.35rem 0 0;
-    overflow-wrap: anywhere;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 4.5rem;
+    text-decoration: none;
 }
 
-@media (max-width: 900px) {
-    .home-grid {
+.quick-panel > a:hover,
+.quick-panel > a:focus-visible {
+    color: var(--pp-primary);
+}
+
+.quick-panel > a span:nth-child(2) {
+    display: grid;
+}
+
+.quick-panel small {
+    color: var(--pp-primary);
+    margin-top: 0.15rem;
+}
+
+.quick-index {
+    color: var(--pp-primary);
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.control-note {
+    align-items: flex-start;
+    background: var(--pp-light);
+    border-radius: 0.75rem;
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    padding: 1rem;
+}
+
+.control-note > span {
+    align-items: center;
+    background: var(--pp-ink);
+    border-radius: 50%;
+    color: var(--pp-surface);
+    display: flex;
+    flex: 0 0 1.5rem;
+    font-size: 0.7rem;
+    height: 1.5rem;
+    justify-content: center;
+}
+
+.control-note p {
+    color: var(--pp-primary);
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+.control-note strong {
+    color: var(--pp-ink);
+}
+
+@media (max-width: 1080px) {
+    .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 880px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 620px) {
+    .dashboard-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .dashboard-action {
+        justify-content: center;
+    }
+
+    .metric-grid {
         grid-template-columns: 1fr;
     }
 
-    .feature-card {
+    .metric-card {
         min-height: 0;
     }
-}
 
-@media (max-width: 540px) {
-    .feature-card {
-        flex-direction: column;
+    .activity-row {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        padding-inline: 1rem;
+    }
+
+    .status-pill {
+        grid-column: 2 / -1;
+        justify-self: start;
+    }
+
+    .row-arrow {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .panel-heading {
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding-inline: 1rem;
     }
 }

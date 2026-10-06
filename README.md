@@ -65,4 +65,4 @@ Commit the generated migration and model snapshot. Starting the AppHost then app
 
 ## Current scope
 
-This repository contains the Sprint 0 engineering foundation, the Sprint 1 Vendor and Purchase Order baseline, and the first Sprint 2 invoice slices. PP-9 adds an authorized, tenant-scoped invoice document upload at `/invoices/upload`; PP-10 models invoices and lines; PP-11 provides the provider-neutral extraction boundary. Extraction orchestration, human review, matching, exceptions, and later capabilities remain intentionally out of scope.
+This repository contains the Sprint 0 engineering foundation, the Sprint 1 Vendor and Purchase Order baseline, and the first Sprint 2 invoice slices. PP-9 adds an authorized, tenant-scoped invoice document upload at `/invoices/upload`; PP-10 models invoices and lines; PP-11 provides the provider-neutral extraction boundary; PP-12 adds authorized correction and confirmation at `/invoices/{invoiceId}/review`; PP-13 blocks low-confidence critical fields until explicit human confirmation. Matching, exception resolution, and later capabilities remain intentionally out of scope.

@@ -33,6 +33,9 @@
             <div>
                 <strong>Invoice queued for processing</strong>
                 <p>@_result.FileName (@FormatSize(_result.SizeBytes)) was stored securely. Reference: @_result.InvoiceId</p>
+                <a class="result-action" href="invoices/@_result.InvoiceId/review">
+                    Review extracted data <span aria-hidden="true">→</span>
+                </a>
             </div>
         </div>
     }

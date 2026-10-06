@@ -190,6 +190,25 @@
     overflow-wrap: anywhere;
 }
 
+.result-action {
+    align-items: center;
+    border-bottom: 1px solid var(--pp-primary);
+    color: var(--pp-primary);
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 800;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-bottom: 0.2rem;
+    text-decoration: none;
+}
+
+.result-action:hover,
+.result-action:focus-visible {
+    border-color: var(--pp-ink);
+    color: var(--pp-ink);
+}
+
 @media (max-width: 700px) {
     .upload-card-heading,
     .upload-actions {

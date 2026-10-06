@@ -98,6 +98,84 @@ public sealed class Invoice : ITenantScopedEntity
 
     public IReadOnlyCollection<InvoiceLine> Lines => _lines.AsReadOnly();
 
+    public void MarkReviewRequired()
+    {
+        if (ProcessingStatus is InvoiceProcessingStatus.Ready)
+        {
+            throw new InvalidOperationException("A ready invoice cannot return to extraction review.");
+        }
+
+        ProcessingStatus = InvoiceProcessingStatus.ReviewRequired;
+    }
+
+    public void ConfirmExtraction(
+        Guid vendorId,
+        string invoiceNumber,
+        DateOnly invoiceDate,
+        string currency,
+        decimal totalAmount,
+        IReadOnlyCollection<ReviewedInvoiceLine> lines)
+    {
+        if (ProcessingStatus is InvoiceProcessingStatus.Ready)
+        {
+            throw new InvalidOperationException("The invoice extraction has already been confirmed.");
+        }
+
+        if (vendorId == Guid.Empty)
+        {
+            throw new ArgumentException("A vendor identifier is required.", nameof(vendorId));
+        }
+
+        if (invoiceDate == default)
+        {
+            throw new ArgumentException("An invoice date is required.", nameof(invoiceDate));
+        }
+
+        if (totalAmount < 0 || decimal.Round(totalAmount, 2) != totalAmount)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(totalAmount),
+                "The total amount must be non-negative and have at most two decimal places.");
+        }
+
+        ArgumentNullException.ThrowIfNull(lines);
+        if (lines.Count == 0)
+        {
+            throw new ArgumentException("At least one invoice line is required.", nameof(lines));
+        }
+
+        var duplicateLine = lines
+            .GroupBy(line => line.LineNumber)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateLine is not null)
+        {
+            throw new ArgumentException(
+                $"Invoice line number {duplicateLine.Key} is duplicated.",
+                nameof(lines));
+        }
+
+        VendorId = vendorId;
+        InvoiceNumber = NormalizeRequired(invoiceNumber, NumberMaxLength, nameof(invoiceNumber));
+        InvoiceDate = invoiceDate;
+        Currency = NormalizeCurrency(currency);
+        TotalAmount = totalAmount;
+
+        _lines.Clear();
+        foreach (var line in lines.OrderBy(line => line.LineNumber))
+        {
+            _lines.Add(new InvoiceLine(
+                Guid.NewGuid(),
+                TenantId,
+                Id,
+                line.LineNumber,
+                line.Description,
+                line.Quantity,
+                line.UnitPrice));
+        }
+
+        ProcessingStatus = InvoiceProcessingStatus.Ready;
+    }
+
     public InvoiceLine AddLine(
         Guid id,
         int lineNumber,
@@ -156,3 +234,9 @@ public sealed class Invoice : ITenantScopedEntity
         return normalized;
     }
 }
+
+public sealed record ReviewedInvoiceLine(
+    int LineNumber,
+    string Description,
+    decimal Quantity,
+    decimal UnitPrice);

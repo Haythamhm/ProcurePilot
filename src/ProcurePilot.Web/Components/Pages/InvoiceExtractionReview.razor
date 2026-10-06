@@ -1,0 +1,385 @@
+@page "/invoices/{InvoiceId:guid}/review"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using ProcurePilot.Application.Invoices.Review
+@inject IInvoiceExtractionReviewService ReviewService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<InvoiceExtractionReview> Logger
+
+@attribute [Authorize(Policy = AuthorizationPolicies.InvoiceReview)]
+
+<PageTitle>Review Invoice Extraction | ProcurePilot</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="review-state" role="status" aria-live="polite">
+        <span class="review-spinner" aria-hidden="true"></span>
+        <div><strong>Loading extraction review</strong><p>Retrieving tenant-scoped invoice data…</p></div>
+    </div>
+}
+else if (_loadFailed)
+{
+    <SystemState Eyebrow="Invoice ingestion"
+                 Marker="!"
+                 Title="Review unavailable"
+                 Description="The extraction review could not be loaded. Try again later.">
+        <Actions><a class="btn btn-outline-secondary" href="/">Return to dashboard</a></Actions>
+    </SystemState>
+}
+else if (_review is null)
+{
+    <SystemState Eyebrow="Invoice ingestion"
+                 Marker="404"
+                 Title="Invoice not found"
+                 Description="This invoice does not exist in the active tenant workspace.">
+        <Actions><a class="btn btn-outline-secondary" href="/">Return to dashboard</a></Actions>
+    </SystemState>
+}
+else if (_review.IsConfirmed)
+{
+    <SystemState Eyebrow="Invoice ingestion"
+                 Marker="✓"
+                 Title="Extraction confirmed"
+                 Description="The structured invoice data is ready for deterministic matching.">
+        <Details>
+            <p><strong>@_review.OriginalFileName</strong> · Invoice @_review.Extraction.InvoiceNumber.Value</p>
+        </Details>
+        <Actions><a class="btn btn-primary" href="/">Return to dashboard</a></Actions>
+    </SystemState>
+}
+else
+{
+    <header class="review-heading">
+        <div>
+            <p class="eyebrow">Invoice ingestion · Step 2 of 3</p>
+            <h1>Review extracted data</h1>
+            <p class="page-summary">Compare every value with the supplier document, correct it when necessary, then confirm it for matching.</p>
+        </div>
+        <div class="document-chip" aria-label="Current document">
+            <span class="pp-icon-purchase-order" aria-hidden="true"></span>
+            <span><small>Source document</small><strong>@_review.OriginalFileName</strong></span>
+        </div>
+    </header>
+
+    <ol class="progress-steps" aria-label="Invoice ingestion progress">
+        <li class="complete"><span>1</span><strong>Upload</strong><small>Document secured</small></li>
+        <li class="active" aria-current="step"><span>2</span><strong>Review</strong><small>Human validation</small></li>
+        <li><span>3</span><strong>Match</strong><small>Deterministic rules</small></li>
+    </ol>
+
+    @if (_review.Assessment.RequiresConfirmation)
+    {
+        <section class="attention-panel" aria-labelledby="attention-title">
+            <span class="attention-symbol" aria-hidden="true">!</span>
+            <div>
+                <p class="card-kicker">Review required</p>
+                <h2 id="attention-title">@_review.Assessment.Issues.Count critical field@(_review.Assessment.Issues.Count == 1 ? string.Empty : "s") need attention</h2>
+                <p>Missing values and confidence below @FormatConfidence(_review.Assessment.ConfidenceThreshold) are blocked until a human confirms them.</p>
+            </div>
+        </section>
+    }
+
+    <EditForm Model="_form" OnValidSubmit="ConfirmAsync" FormName="invoice-extraction-review">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="validation-summary" />
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <div class="review-message" role="alert"><strong>Review not saved.</strong><span>@_errorMessage</span></div>
+        }
+
+        <div class="review-layout">
+            <section class="review-panel" aria-labelledby="invoice-details-title">
+                <div class="panel-heading">
+                    <div><p class="card-kicker">Header</p><h2 id="invoice-details-title">Invoice details</h2></div>
+                    <span class="panel-count">6 fields</span>
+                </div>
+                <div class="field-grid">
+                    <div class="review-field @FieldClass(InvoiceExtractionField.InvoiceNumber)">
+                        <label for="invoice-number">Invoice number</label>
+                        <ConfidenceBadge Field="InvoiceExtractionField.InvoiceNumber" Confidence="@_review.Extraction.InvoiceNumber.Confidence" />
+                        <InputText id="invoice-number" class="form-control" @bind-Value="_form.InvoiceNumber" />
+                        <ValidationMessage For="@(() => _form.InvoiceNumber)" />
+                    </div>
+                    <div class="review-field @FieldClass(InvoiceExtractionField.SupplierName)">
+                        <label for="vendor">Vendor</label>
+                        <ConfidenceBadge Field="InvoiceExtractionField.SupplierName" Confidence="@_review.Extraction.SupplierName.Confidence" />
+                        <InputSelect id="vendor" class="form-control" @bind-Value="_form.VendorId">
+                            <option value="">Select a vendor</option>
+                            @foreach (var vendor in _review.Vendors)
+                            {
+                                <option value="@vendor.Id">@vendor.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _form.VendorId)" />
+                    </div>
+                    <div class="review-field @FieldClass(InvoiceExtractionField.PurchaseOrderNumber)">
+                        <label for="po-number">Purchase order</label>
+                        <ConfidenceBadge Field="InvoiceExtractionField.PurchaseOrderNumber" Confidence="@_review.Extraction.PurchaseOrderNumber.Confidence" />
+                        <InputText id="po-number" class="form-control" @bind-Value="_form.PurchaseOrderNumber" />
+                        <ValidationMessage For="@(() => _form.PurchaseOrderNumber)" />
+                    </div>
+                    <div class="review-field @FieldClass(InvoiceExtractionField.InvoiceDate)">
+                        <label for="invoice-date">Invoice date</label>
+                        <ConfidenceBadge Field="InvoiceExtractionField.InvoiceDate" Confidence="@_review.Extraction.InvoiceDate.Confidence" />
+                        <InputDate id="invoice-date" class="form-control" @bind-Value="_form.InvoiceDate" />
+                    </div>
+                    <div class="review-field @FieldClass(InvoiceExtractionField.Currency)">
+                        <label for="currency">Currency</label>
+                        <ConfidenceBadge Field="InvoiceExtractionField.Currency" Confidence="@_review.Extraction.Currency.Confidence" />
+                        <InputText id="currency" class="form-control" maxlength="3" @bind-Value="_form.Currency" />
+                        <ValidationMessage For="@(() => _form.Currency)" />
+                    </div>
+                    <div class="review-field @FieldClass(InvoiceExtractionField.TotalAmount)">
+                        <label for="total">Total amount</label>
+                        <ConfidenceBadge Field="InvoiceExtractionField.TotalAmount" Confidence="@_review.Extraction.TotalAmount.Confidence" />
+                        <InputNumber id="total" class="form-control numeric-input" @bind-Value="_form.TotalAmount" />
+                        <ValidationMessage For="@(() => _form.TotalAmount)" />
+                    </div>
+                    <div class="review-field supporting-field">
+                        <label for="subtotal">Subtotal</label>
+                        <span class="confidence-badge">@FormatConfidence(_review.Extraction.SubtotalAmount.Confidence)</span>
+                        <InputNumber id="subtotal" class="form-control numeric-input" @bind-Value="_form.SubtotalAmount" />
+                    </div>
+                    <div class="review-field supporting-field">
+                        <label for="tax">Tax amount</label>
+                        <span class="confidence-badge">@FormatConfidence(_review.Extraction.TaxAmount.Confidence)</span>
+                        <InputNumber id="tax" class="form-control numeric-input" @bind-Value="_form.TaxAmount" />
+                    </div>
+                </div>
+            </section>
+
+            <aside class="review-summary" aria-labelledby="review-summary-title">
+                <p class="card-kicker">Control summary</p>
+                <h2 id="review-summary-title">Before matching</h2>
+                <ul>
+                    <li><span>Critical fields</span><strong>@(_review.Assessment.RequiresConfirmation ? "Check required" : "Complete")</strong></li>
+                    <li><span>Human decision</span><strong>Required</strong></li>
+                    <li><span>Matching</span><strong>Not started</strong></li>
+                </ul>
+                <p class="summary-note">ProcurePilot does not approve, pay, or change financial state during this review.</p>
+            </aside>
+        </div>
+
+        <section class="review-panel line-panel" aria-labelledby="line-items-title">
+            <div class="panel-heading">
+                <div><p class="card-kicker">Details</p><h2 id="line-items-title">Line items</h2></div>
+                <button class="btn btn-outline-secondary" type="button" @onclick="AddLine">Add line</button>
+            </div>
+            <div class="line-list">
+                @for (var index = 0; index < _form.Lines.Count; index++)
+                {
+                    var line = _form.Lines[index];
+                    <fieldset class="line-editor">
+                        <legend>Line @line.LineNumber</legend>
+                        <div class="line-fields">
+                            <div><label for="@($"description-{index}")">Description</label><InputText id="@($"description-{index}")" class="form-control" @bind-Value="line.Description" /></div>
+                            <div><label for="@($"quantity-{index}")">Quantity</label><InputNumber id="@($"quantity-{index}")" class="form-control numeric-input" @bind-Value="line.Quantity" /></div>
+                            <div><label for="@($"unit-price-{index}")">Unit price</label><InputNumber id="@($"unit-price-{index}")" class="form-control numeric-input" @bind-Value="line.UnitPrice" /></div>
+                            <div>
+                                <label>Calculated total</label>
+                                <output class="form-control numeric-input calculated-total">@CalculateLineTotal(line).ToString("N2")</output>
+                            </div>
+                            <button class="remove-line" type="button" disabled="@(_form.Lines.Count == 1)" @onclick="() => RemoveLine(line)" aria-label="Remove line @line.LineNumber">×</button>
+                        </div>
+                    </fieldset>
+                }
+            </div>
+        </section>
+
+        <footer class="review-actions">
+            <div>
+                @if (_review.Assessment.RequiresConfirmation)
+                {
+                    <label class="confirmation-check">
+                        <InputCheckbox @bind-Value="_form.ConfirmLowConfidenceFields" />
+                        <span>I checked every flagged critical field against the source document.</span>
+                    </label>
+                }
+                <p>Confirmation records the authenticated reviewer and makes the invoice ready for matching.</p>
+            </div>
+            <button class="btn btn-primary" type="submit" disabled="@_isSaving">@(_isSaving ? "Confirming…" : "Confirm reviewed data")</button>
+        </footer>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid InvoiceId { get; set; }
+
+    private InvoiceReviewReadModel? _review;
+    private ReviewFormModel _form = new();
+    private bool _isLoading = true;
+    private bool _loadFailed;
+    private bool _isSaving;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _loadFailed = false;
+        try
+        {
+            _review = await ReviewService.GetAsync(InvoiceId);
+            if (_review is not null)
+            {
+                _form = ReviewFormModel.From(_review);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load extraction review for invoice {InvoiceId}.", InvoiceId);
+            _loadFailed = true;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (_review is null)
+        {
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+        try
+        {
+            var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (!Guid.TryParse(authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier), out var reviewerId))
+            {
+                throw new InvoiceReviewValidationException("The authenticated reviewer is missing.");
+            }
+
+            await ReviewService.ConfirmAsync(
+                new ConfirmInvoiceExtractionCommand(
+                    InvoiceId,
+                    _form.VendorId,
+                    _form.InvoiceNumber,
+                    _form.PurchaseOrderNumber,
+                    _form.InvoiceDate,
+                    _form.Currency,
+                    _form.SubtotalAmount,
+                    _form.TaxAmount,
+                    _form.TotalAmount,
+                    _form.Lines.Select(line => new ConfirmInvoiceLineCommand(
+                        line.LineNumber,
+                        line.Description,
+                        line.Quantity,
+                        line.UnitPrice)).ToArray(),
+                    _form.ConfirmLowConfidenceFields),
+                reviewerId);
+            _review = await ReviewService.GetAsync(InvoiceId);
+        }
+        catch (InvoiceReviewValidationException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to confirm extraction review for invoice {InvoiceId}.", InvoiceId);
+            _errorMessage = "The review could not be saved. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private string FieldClass(InvoiceExtractionField field) =>
+        _review?.Assessment.Issues.Any(issue => issue.Field == field) == true ? "needs-review" : string.Empty;
+
+    private static string FormatConfidence(double confidence) => $"{confidence:P0}";
+
+    private static decimal CalculateLineTotal(ReviewLineFormModel line) =>
+        decimal.Round(line.Quantity * line.UnitPrice, 2, MidpointRounding.AwayFromZero);
+
+    private void AddLine() => _form.Lines.Add(new ReviewLineFormModel
+    {
+        LineNumber = _form.Lines.Count == 0 ? 1 : _form.Lines.Max(line => line.LineNumber) + 1
+    });
+
+    private void RemoveLine(ReviewLineFormModel line)
+    {
+        if (_form.Lines.Count > 1)
+        {
+            _form.Lines.Remove(line);
+        }
+    }
+
+    private sealed class ReviewFormModel
+    {
+        [Required]
+        public string InvoiceNumber { get; set; } = string.Empty;
+
+        [Required]
+        public Guid VendorId { get; set; }
+
+        [Required]
+        public string PurchaseOrderNumber { get; set; } = string.Empty;
+
+        public DateOnly InvoiceDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        [Required, StringLength(3, MinimumLength = 3)]
+        public string Currency { get; set; } = string.Empty;
+
+        public decimal? SubtotalAmount { get; set; }
+
+        public decimal? TaxAmount { get; set; }
+
+        [Range(typeof(decimal), "0", "9999999999999999")]
+        public decimal TotalAmount { get; set; }
+
+        public bool ConfirmLowConfidenceFields { get; set; }
+
+        public List<ReviewLineFormModel> Lines { get; } = [];
+
+        public static ReviewFormModel From(InvoiceReviewReadModel review)
+        {
+            var model = new ReviewFormModel
+            {
+                InvoiceNumber = review.Extraction.InvoiceNumber.Value ?? string.Empty,
+                PurchaseOrderNumber = review.Extraction.PurchaseOrderNumber.Value ?? string.Empty,
+                InvoiceDate = review.Extraction.InvoiceDate.Value ?? DateOnly.FromDateTime(DateTime.UtcNow),
+                Currency = review.Extraction.Currency.Value ?? string.Empty,
+                SubtotalAmount = review.Extraction.SubtotalAmount.Value,
+                TaxAmount = review.Extraction.TaxAmount.Value,
+                TotalAmount = review.Extraction.TotalAmount.Value ?? 0,
+                VendorId = review.Vendors
+                    .FirstOrDefault(vendor => string.Equals(
+                        vendor.Name,
+                        review.Extraction.SupplierName.Value,
+                        StringComparison.OrdinalIgnoreCase))?.Id ?? Guid.Empty
+            };
+
+            foreach (var line in review.Extraction.LineItems)
+            {
+                model.Lines.Add(new ReviewLineFormModel
+                {
+                    LineNumber = line.LineNumber,
+                    Description = line.Description.Value ?? string.Empty,
+                    Quantity = line.Quantity.Value ?? 0,
+                    UnitPrice = line.UnitPrice.Value ?? 0
+                });
+            }
+
+            if (model.Lines.Count == 0)
+            {
+                model.Lines.Add(new ReviewLineFormModel { LineNumber = 1 });
+            }
+
+            return model;
+        }
+    }
+
+    private sealed class ReviewLineFormModel
+    {
+        public int LineNumber { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public decimal Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+    }
+}

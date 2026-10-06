@@ -123,6 +123,51 @@ public sealed class InvoiceTests
             invoice.AddLine(Guid.NewGuid(), 1, "Line", 1m, 10.001m));
     }
 
+    [Fact]
+    public void HumanReviewReplacesExtractionAndMovesInvoiceToReady()
+    {
+        var vendorId = Guid.NewGuid();
+        var invoice = Invoice.CreateProcessing(Guid.NewGuid(), Guid.NewGuid());
+        invoice.MarkReviewRequired();
+
+        invoice.ConfirmExtraction(
+            vendorId,
+            " INV-REVIEWED ",
+            new DateOnly(2026, 10, 6),
+            "eur",
+            42.50m,
+            [new ReviewedInvoiceLine(1, " Reviewed service ", 2m, 21.25m)]);
+
+        Assert.Equal(InvoiceProcessingStatus.Ready, invoice.ProcessingStatus);
+        Assert.Equal(vendorId, invoice.VendorId);
+        Assert.Equal("INV-REVIEWED", invoice.InvoiceNumber);
+        Assert.Equal("EUR", invoice.Currency);
+        Assert.Equal(42.50m, invoice.TotalAmount);
+        Assert.Equal("Reviewed service", Assert.Single(invoice.Lines).Description);
+    }
+
+    [Fact]
+    public void ReadyInvoiceCannotBeReviewedOrConfirmedTwice()
+    {
+        var invoice = Invoice.CreateProcessing(Guid.NewGuid(), Guid.NewGuid());
+        invoice.ConfirmExtraction(
+            Guid.NewGuid(),
+            "INV-READY",
+            new DateOnly(2026, 10, 6),
+            "USD",
+            10m,
+            [new ReviewedInvoiceLine(1, "Line", 1m, 10m)]);
+
+        Assert.Throws<InvalidOperationException>(invoice.MarkReviewRequired);
+        Assert.Throws<InvalidOperationException>(() => invoice.ConfirmExtraction(
+            Guid.NewGuid(),
+            "INV-READY-2",
+            new DateOnly(2026, 10, 6),
+            "USD",
+            10m,
+            [new ReviewedInvoiceLine(1, "Line", 1m, 10m)]));
+    }
+
     private static Invoice CreateInvoice() => new(
         Guid.NewGuid(),
         Guid.NewGuid(),

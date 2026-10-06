@@ -8,6 +8,7 @@ using ProcurePilot.Domain.Purchasing;
 using ProcurePilot.Domain.Tenancy;
 using ProcurePilot.Domain.Vendors;
 using ProcurePilot.Infrastructure.Identity;
+using ProcurePilot.Infrastructure.Invoices;
 
 namespace ProcurePilot.Infrastructure.Persistence;
 
@@ -31,6 +32,8 @@ public sealed class ProcurePilotDbContext(
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
 
     public DbSet<InvoiceDocument> InvoiceDocuments => Set<InvoiceDocument>();
+
+    public DbSet<InvoiceExtractionSnapshot> InvoiceExtractionSnapshots => Set<InvoiceExtractionSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -244,6 +247,35 @@ public sealed class ProcurePilotDbContext(
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.UploadedByUserId })
                 .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<InvoiceExtractionSnapshot>(snapshot =>
+        {
+            snapshot.ToTable("InvoiceExtractionSnapshots");
+            snapshot.HasKey(value => value.Id);
+            snapshot.Property(value => value.TenantId).IsRequired();
+            snapshot.Property(value => value.InvoiceId).IsRequired();
+            snapshot.Property(value => value.OriginalPayload)
+                .HasColumnType("jsonb")
+                .HasMaxLength(InvoiceExtractionSnapshot.PayloadMaxLength)
+                .IsRequired();
+            snapshot.Property(value => value.ExtractedAtUtc).IsRequired();
+            snapshot.Property(value => value.ReviewedPayload)
+                .HasColumnType("jsonb")
+                .HasMaxLength(InvoiceExtractionSnapshot.PayloadMaxLength);
+            snapshot.Property(value => value.ReviewedByUserId);
+            snapshot.Property(value => value.ReviewedAtUtc);
+            snapshot.HasIndex(value => new { value.TenantId, value.InvoiceId }).IsUnique();
+            snapshot.HasOne<Invoice>()
+                .WithOne()
+                .HasForeignKey<InvoiceExtractionSnapshot>(value => new { value.TenantId, value.InvoiceId })
+                .HasPrincipalKey<Invoice>(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            snapshot.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, UserId = value.ReviewedByUserId })
+                .HasPrincipalKey(value => new { value.TenantId, UserId = value.Id })
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

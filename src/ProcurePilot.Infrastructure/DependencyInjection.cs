@@ -9,6 +9,8 @@ using ProcurePilot.Infrastructure.Identity;
 using ProcurePilot.Infrastructure.Persistence;
 using ProcurePilot.Infrastructure.Persistence.Queries;
 using ProcurePilot.Application.Invoices.Upload;
+using ProcurePilot.Application.Invoices.Review;
+using ProcurePilot.Application.Dashboard;
 using ProcurePilot.Infrastructure.Invoices;
 using ProcurePilot.Infrastructure.Storage;
 
@@ -32,10 +34,12 @@ public static class DependencyInjection
                 npgsql => npgsql.MigrationsAssembly(typeof(ProcurePilotDbContext).Assembly.FullName)));
 
         services.AddScoped<IPurchaseOrderQueries, PurchaseOrderQueries>();
+        services.AddScoped<IWorkspaceDashboardQueries, WorkspaceDashboardQueries>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(new BlobServiceClient(invoiceBlobConnectionString));
         services.AddScoped<IInvoiceDocumentStorage, AzureBlobInvoiceDocumentStorage>();
         services.AddScoped<IInvoiceUploadService, InvoiceUploadService>();
+        services.AddScoped<IInvoiceExtractionReviewService, InvoiceExtractionReviewService>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
