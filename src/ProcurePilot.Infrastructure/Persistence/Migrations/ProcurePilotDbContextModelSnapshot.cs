@@ -499,6 +499,46 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("ProcurePilot.Infrastructure.Invoices.InvoiceExtractionSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ExtractedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OriginalPayload")
+                        .IsRequired()
+                        .HasMaxLength(100000)
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReviewedPayload")
+                        .HasMaxLength(100000)
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "InvoiceId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "ReviewedByUserId");
+
+                    b.ToTable("InvoiceExtractionSnapshots", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -622,6 +662,22 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ProcurePilot.Infrastructure.Invoices.InvoiceExtractionSnapshot", b =>
+                {
+                    b.HasOne("ProcurePilot.Domain.Invoices.Invoice", null)
+                        .WithOne()
+                        .HasForeignKey("ProcurePilot.Infrastructure.Invoices.InvoiceExtractionSnapshot", "TenantId", "InvoiceId")
+                        .HasPrincipalKey("ProcurePilot.Domain.Invoices.Invoice", "TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ReviewedByUserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("ProcurePilot.Domain.Invoices.Invoice", b =>

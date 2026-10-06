@@ -1,45 +1,157 @@
 @page "/"
+@using ProcurePilot.Application.Dashboard
+@inject IWorkspaceDashboardQueries DashboardQueries
+@inject ILogger<Home> Logger
 
 @attribute [Authorize(Policy = AuthorizationPolicies.ActiveTenant)]
 
-<PageTitle>ProcurePilot</PageTitle>
+<PageTitle>Workspace | ProcurePilot</PageTitle>
 
 <AuthorizeView>
     <Authorized Context="authenticationState">
-        <header class="page-heading">
-            <p class="eyebrow">Workspace</p>
-            <h1>Welcome to ProcurePilot</h1>
-            <p class="page-summary">Your secure, tenant-scoped purchasing workspace.</p>
+        <header class="dashboard-heading">
+            <div>
+                <p class="eyebrow">Procurement workspace</p>
+                <h1>Good to see you, @DisplayName(authenticationState.User.Identity?.Name)</h1>
+                <p class="page-summary">Move supplier invoices from intake to a verified, match-ready state.</p>
+            </div>
+            <a class="btn btn-primary dashboard-action" href="invoices/upload">
+                <span aria-hidden="true">＋</span>
+                Upload invoice
+            </a>
         </header>
 
-        <div class="home-grid">
-            <section class="feature-card" aria-labelledby="purchase-order-card-title">
-                <div class="feature-card-icon pp-icon-purchase-order" aria-hidden="true"></div>
-                <div>
-                    <p class="card-kicker">Available now</p>
-                    <h2 id="purchase-order-card-title">Purchase order reference</h2>
-                    <p>Review the purchase orders and line items available to your active tenant.</p>
-                    <a class="primary-link" href="purchase-orders">
-                        Open Purchase Orders
-                        <span aria-hidden="true">→</span>
-                    </a>
-                </div>
+        @if (_isLoading)
+        {
+            <div class="dashboard-state" role="status" aria-live="polite">
+                <span class="dashboard-spinner" aria-hidden="true"></span>
+                <span>Loading workspace activity…</span>
+            </div>
+        }
+        else if (_loadFailed || _dashboard is null)
+        {
+            <SystemState Eyebrow="Workspace"
+                         Marker="!"
+                         Title="Dashboard unavailable"
+                         Description="The workspace summary could not be loaded. Your data was not changed.">
+                <Actions><a class="btn btn-outline-secondary" href="/">Try again</a></Actions>
+            </SystemState>
+        }
+        else
+        {
+            <section class="metric-grid" aria-label="Workspace summary">
+                <article class="metric-card">
+                    <span class="metric-icon pp-icon-purchase-order" aria-hidden="true"></span>
+                    <div><p>Purchase orders</p><strong>@_dashboard.PurchaseOrderCount</strong><small>Tenant reference</small></div>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-icon pp-icon-purchase-order" aria-hidden="true"></span>
+                    <div><p>Invoices</p><strong>@_dashboard.InvoiceCount</strong><small>Received documents</small></div>
+                </article>
+                <article class="metric-card attention">
+                    <span class="metric-icon" aria-hidden="true">!</span>
+                    <div><p>Needs review</p><strong>@_dashboard.ReviewRequiredCount</strong><small>Human action required</small></div>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-icon" aria-hidden="true">✓</span>
+                    <div><p>Ready</p><strong>@_dashboard.ReadyInvoiceCount</strong><small>Available for matching</small></div>
+                </article>
             </section>
 
-            <aside class="session-card" aria-labelledby="session-card-title">
-                <p class="card-kicker">Current session</p>
-                <h2 id="session-card-title">Active workspace</h2>
-                <dl>
-                    <div>
-                        <dt>Signed in as</dt>
-                        <dd>@authenticationState.User.Identity?.Name</dd>
+            <div class="dashboard-grid">
+                <section class="activity-panel" id="invoice-activity" aria-labelledby="invoice-activity-title">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="card-kicker">Live workspace</p>
+                            <h2 id="invoice-activity-title">Recent invoice activity</h2>
+                        </div>
+                        <a href="invoices/upload">Add invoice <span aria-hidden="true">→</span></a>
                     </div>
-                    <div>
-                        <dt>Access</dt>
-                        <dd>Active tenant</dd>
+
+                    @if (_dashboard.RecentInvoices.Count == 0)
+                    {
+                        <div class="empty-activity">
+                            <span aria-hidden="true">01</span>
+                            <div><strong>No invoices yet</strong><p>Upload the first supplier document to begin the controlled intake flow.</p></div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="activity-list">
+                            @foreach (var invoice in _dashboard.RecentInvoices)
+                            {
+                                <a class="activity-row" href="invoices/@invoice.Id/review">
+                                    <span class="file-mark" aria-hidden="true">@FileInitial(invoice.FileName)</span>
+                                    <span class="activity-copy">
+                                        <strong>@invoice.FileName</strong>
+                                        <small>Received @invoice.UploadedAtUtc.ToLocalTime().ToString("dd MMM · HH:mm")</small>
+                                    </span>
+                                    <span class="status-pill status-@invoice.Status.ToLowerInvariant()">@StatusLabel(invoice.Status)</span>
+                                    <span class="row-arrow" aria-hidden="true">→</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <aside class="quick-panel" aria-labelledby="quick-actions-title">
+                    <p class="card-kicker">Shortcuts</p>
+                    <h2 id="quick-actions-title">Continue your work</h2>
+                    <a href="invoices/upload">
+                        <span class="quick-index">01</span>
+                        <span><strong>Upload invoice</strong><small>Secure a supplier document</small></span>
+                        <span aria-hidden="true">→</span>
+                    </a>
+                    <a href="purchase-orders">
+                        <span class="quick-index">02</span>
+                        <span><strong>Purchase orders</strong><small>Review tenant references</small></span>
+                        <span aria-hidden="true">→</span>
+                    </a>
+                    <div class="control-note">
+                        <span aria-hidden="true">✓</span>
+                        <p><strong>Human-controlled workflow</strong><br />AI suggests extracted values; people confirm financial data.</p>
                     </div>
-                </dl>
-            </aside>
-        </div>
+                </aside>
+            </div>
+        }
     </Authorized>
 </AuthorizeView>
+
+@code {
+    private WorkspaceDashboardReadModel? _dashboard;
+    private bool _isLoading = true;
+    private bool _loadFailed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _dashboard = await DashboardQueries.GetAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load the workspace dashboard.");
+            _loadFailed = true;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string DisplayName(string? name) => string.IsNullOrWhiteSpace(name)
+        ? "there"
+        : name.Split('@', StringSplitOptions.RemoveEmptyEntries)[0];
+
+    private static char FileInitial(string fileName) => string.IsNullOrWhiteSpace(fileName)
+        ? 'I'
+        : char.ToUpperInvariant(fileName[0]);
+
+    private static string StatusLabel(string status) => status switch
+    {
+        "ReviewRequired" => "Needs review",
+        "Ready" => "Ready",
+        "Received" => "Received",
+        _ => status
+    };
+}

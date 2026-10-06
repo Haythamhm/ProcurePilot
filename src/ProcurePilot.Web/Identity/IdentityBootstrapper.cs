@@ -64,14 +64,24 @@ public sealed class IdentityBootstrapper(
         }
 
         var roleClaims = await roleManager.GetClaimsAsync(role!);
-        if (!roleClaims.Any(claim =>
-                claim.Type == ProcurePilotPermissions.ClaimType &&
-                claim.Value == ProcurePilotPermissions.InvoiceUpload))
+        var requiredPermissions = new[]
         {
+            ProcurePilotPermissions.InvoiceUpload,
+            ProcurePilotPermissions.InvoiceReview
+        };
+        foreach (var permission in requiredPermissions)
+        {
+            if (roleClaims.Any(claim =>
+                    claim.Type == ProcurePilotPermissions.ClaimType &&
+                    claim.Value == permission))
+            {
+                continue;
+            }
+
             var permissionResult = await roleManager.AddClaimAsync(
                 role!,
-                new Claim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.InvoiceUpload));
-            EnsureSucceeded(permissionResult, "grant the Invoice.Upload permission");
+                new Claim(ProcurePilotPermissions.ClaimType, permission));
+            EnsureSucceeded(permissionResult, $"grant the {permission} permission");
         }
 
         var user = await userManager.FindByEmailAsync(bootstrap.Email!.Trim());

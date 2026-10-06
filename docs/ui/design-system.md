@@ -1,6 +1,6 @@
 # Frontend design system
 
-This foundation applies to the implemented application shell, sign-in page, home page, Purchase Orders surface, and system feedback states. It is tracked by the Delivery Backlog tasks **Unifier l’UI des surfaces frontend livrées** and **Unifier les états système frontend**, and follows the existing Figma information architecture without adding product capabilities.
+This foundation applies to the implemented application shell, sign-in page, workspace dashboard, Purchase Orders surface, invoice intake and review, and system feedback states. It is tracked by the Delivery Backlog tasks **Unifier l’UI des surfaces frontend livrées** and **Unifier les états système frontend**, and follows the existing Figma information architecture without adding product capabilities.
 
 ## Color tokens
 
@@ -44,6 +44,16 @@ The bundle intentionally contains only `home`, `purchase-order`, `logout`, `menu
 - Data tables preserve semantic headers and use an explicitly labelled horizontal scroll region when space is constrained.
 - Loading, empty, error, active, and validation states combine text with shape or icon cues.
 - Motion is limited to functional loading/reconnection feedback and is disabled or simplified when reduced motion is requested.
+
+## Dashboard and review patterns
+
+- Summary cards use live tenant-scoped counts, short labels, and supporting text; they are not decorative hard-coded metrics.
+- Activity rows expose the document, timestamp, status text, and a direct next action.
+- Review pages show workflow position, source context, confidence next to the affected field, and one explicit confirmation action.
+- Financial controls state what automation does not do, so the reviewer understands the boundary of the decision.
+- The navigation groups work by user intent: overview, invoice operations, and reference data.
+
+The card, grid, and responsive panel composition was informed by the public Radzen, Syncfusion, and MudBlazor dashboard examples requested for PP-12/PP-13. The application keeps its native Blazor components: adding UI frameworks for these patterns would create overlapping dependencies, and Syncfusion would also introduce a commercial licensing decision. A new framework requires a separate justified ADR.
 
 ## System feedback states
 

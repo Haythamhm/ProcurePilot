@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Application.Security;
+using ProcurePilot.Application.Invoices.Review;
 using ProcurePilot.Infrastructure;
 using ProcurePilot.Infrastructure.Persistence;
 using ProcurePilot.Web.Components;
@@ -43,6 +44,17 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/account/logout";
     options.SlidingExpiration = true;
 });
+builder.Services
+    .AddOptions<InvoiceExtractionReviewOptions>()
+    .Bind(builder.Configuration.GetSection(InvoiceExtractionReviewOptions.SectionName))
+    .Validate(
+        options => options.ConfidenceThreshold is > 0 and <= 1,
+        "Invoice extraction confidence threshold must be greater than zero and at most one.")
+    .Validate(
+        options => options.CriticalFields.Length > 0
+            && options.CriticalFields.All(field => Enum.TryParse<InvoiceExtractionField>(field, true, out _)),
+        "Invoice extraction critical fields must contain only supported values.")
+    .ValidateOnStart();
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(
         AuthorizationPolicies.ActiveTenant,
@@ -54,7 +66,13 @@ builder.Services.AddAuthorizationBuilder()
         policy => policy
             .RequireAuthenticatedUser()
             .AddRequirements(new ActiveTenantRequirement())
-            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.InvoiceUpload));
+            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.InvoiceUpload))
+    .AddPolicy(
+        AuthorizationPolicies.InvoiceReview,
+        policy => policy
+            .RequireAuthenticatedUser()
+            .AddRequirements(new ActiveTenantRequirement())
+            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.InvoiceReview));
 builder.Services.AddScoped<IAuthorizationHandler, ActiveTenantAuthorizationHandler>();
 builder.Services.Configure<IdentityBootstrapOptions>(
     builder.Configuration.GetSection(IdentityBootstrapOptions.SectionName));
