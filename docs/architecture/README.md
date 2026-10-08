@@ -18,3 +18,4 @@ Implemented architecture notes:
 - [Invoice extraction review](invoice-extraction-review.md) — auditable human correction and low-confidence gate before matching.
 - [Matching rule](matching-rule.md) — tenant-scoped and versioned price-tolerance configuration.
 - [Price variance matching](price-variance-matching.md) — deterministic, reproducible and tenant-safe line-price evaluation.
+- [Exception case state machine](exception-case-state-machine.md) — tenant-scoped exception aggregate and deterministic workflow transitions.

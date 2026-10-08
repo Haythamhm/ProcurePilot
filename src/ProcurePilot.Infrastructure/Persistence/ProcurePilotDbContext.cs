@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Tenancy;
+using ProcurePilot.Domain.Exceptions;
 using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Matching;
 using ProcurePilot.Domain.Purchasing;
@@ -39,6 +40,8 @@ public sealed class ProcurePilotDbContext(
     public DbSet<MatchingRule> MatchingRules => Set<MatchingRule>();
 
     public DbSet<MatchResult> MatchResults => Set<MatchResult>();
+
+    public DbSet<ExceptionCase> ExceptionCases => Set<ExceptionCase>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -389,6 +392,60 @@ public sealed class ProcurePilotDbContext(
                 .HasPrincipalKey(value => new { value.TenantId, value.Id })
                 .OnDelete(DeleteBehavior.Restrict);
             result.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(value => value.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ExceptionCase>(exceptionCase =>
+        {
+            exceptionCase.ToTable("ExceptionCases", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_ExceptionCases_Resolution",
+                    "(\"Status\" IN ('Resolved', 'Closed') AND \"ResolvedAtUtc\" IS NOT NULL) OR " +
+                    "(\"Status\" NOT IN ('Resolved', 'Closed') AND \"ResolvedAtUtc\" IS NULL)");
+                table.HasCheckConstraint(
+                    "CK_ExceptionCases_ResolvedAt",
+                    "\"ResolvedAtUtc\" IS NULL OR \"ResolvedAtUtc\" >= \"OpenedAtUtc\"");
+            });
+            exceptionCase.HasKey(value => value.Id);
+            exceptionCase.HasAlternateKey(value => new { value.TenantId, value.Id });
+            exceptionCase.Property(value => value.TenantId).IsRequired();
+            exceptionCase.Property(value => value.InvoiceId).IsRequired();
+            exceptionCase.Property(value => value.PurchaseOrderId).IsRequired();
+            exceptionCase.Property(value => value.MatchResultId).IsRequired();
+            exceptionCase.Property(value => value.Type)
+                .HasConversion<string>()
+                .HasMaxLength(ExceptionCase.TypeMaxLength)
+                .IsRequired();
+            exceptionCase.Property(value => value.Status)
+                .HasConversion<string>()
+                .HasMaxLength(ExceptionCase.StatusMaxLength)
+                .IsRequired();
+            exceptionCase.Property(value => value.OpenedAtUtc).IsRequired();
+            exceptionCase.Property(value => value.ResolvedAtUtc);
+            exceptionCase.HasIndex(value => new { value.TenantId, value.MatchResultId })
+                .IsUnique();
+            exceptionCase.HasIndex(value => new { value.TenantId, value.InvoiceId });
+            exceptionCase.HasIndex(value => new { value.TenantId, value.PurchaseOrderId });
+            exceptionCase.HasIndex(value => new { value.TenantId, value.Status, value.OpenedAtUtc });
+            exceptionCase.HasOne<Invoice>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.InvoiceId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            exceptionCase.HasOne<PurchaseOrder>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.PurchaseOrderId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            exceptionCase.HasOne<MatchResult>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.MatchResultId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            exceptionCase.HasOne<Tenant>()
                 .WithMany()
                 .HasForeignKey(value => value.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
