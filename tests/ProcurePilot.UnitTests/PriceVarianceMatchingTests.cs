@@ -47,6 +47,42 @@ public sealed class PriceVarianceMatchingTests
     }
 
     [Fact]
+    public void SamePricesPassWithZeroTolerance()
+    {
+        var fixture = CreateFixture(invoiceUnitPrice: 100m, purchaseOrderUnitPrice: 100m);
+
+        var result = Evaluate(fixture, tolerancePercent: 0m);
+
+        Assert.Equal(0m, result.VariancePercent);
+        Assert.Equal(MatchResultStatus.Passed, result.Status);
+        Assert.Null(result.ExceptionCode);
+    }
+
+    [Fact]
+    public void NegativeVarianceExactlyAtTolerancePasses()
+    {
+        var fixture = CreateFixture(invoiceUnitPrice: 97m, purchaseOrderUnitPrice: 100m);
+
+        var result = Evaluate(fixture, tolerancePercent: 3m);
+
+        Assert.Equal(-3m, result.VariancePercent);
+        Assert.Equal(MatchResultStatus.Passed, result.Status);
+        Assert.Null(result.ExceptionCode);
+    }
+
+    [Fact]
+    public void HundredPercentVariancePassesAtMaximumTolerance()
+    {
+        var fixture = CreateFixture(invoiceUnitPrice: 200m, purchaseOrderUnitPrice: 100m);
+
+        var result = Evaluate(fixture, tolerancePercent: 100m);
+
+        Assert.Equal(100m, result.VariancePercent);
+        Assert.Equal(MatchResultStatus.Passed, result.Status);
+        Assert.Null(result.ExceptionCode);
+    }
+
+    [Fact]
     public void NegativeVarianceUsesItsAbsoluteValueForTheDecision()
     {
         var fixture = CreateFixture(invoiceUnitPrice: 95m, purchaseOrderUnitPrice: 100m);
