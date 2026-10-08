@@ -11,6 +11,7 @@ using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Application.Invoices.Upload;
 using ProcurePilot.Application.Invoices.Extraction;
 using ProcurePilot.Application.Invoices.Review;
+using ProcurePilot.Domain.Exceptions;
 using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Matching;
 using ProcurePilot.Domain.Purchasing;
@@ -104,6 +105,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddPriceVarianceMatchResult", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddExceptionCaseStateMachine", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -187,6 +191,21 @@ public sealed class AppHostTests
         bootstrapTenantContext.MatchResults.Add(matchResult);
         await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
 
+        var exceptionCase = ExceptionCase.CreateFromFailedMatch(
+            Guid.NewGuid(),
+            bootstrapInvoiceLine,
+            demoLine,
+            matchResult,
+            matchResult.EvaluatedAtUtc.AddMinutes(1));
+        exceptionCase.TransitionTo(
+            ExceptionCaseStatus.Analyzing,
+            exceptionCase.OpenedAtUtc.AddMinutes(1));
+        exceptionCase.TransitionTo(
+            ExceptionCaseStatus.Open,
+            exceptionCase.OpenedAtUtc.AddMinutes(2));
+        bootstrapTenantContext.ExceptionCases.Add(exceptionCase);
+        await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
+
         await using var invoiceReadContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(bootstrapTenant.Id));
@@ -221,6 +240,15 @@ public sealed class AppHostTests
         Assert.Equal(3m, persistedMatchResult.AllowedTolerancePercent);
         Assert.Equal(1, persistedMatchResult.MatchingRuleVersion);
         Assert.Equal(initialMatchingRule.Id, persistedMatchResult.MatchingRuleId);
+
+        var persistedExceptionCase = await invoiceReadContext.ExceptionCases.SingleAsync(cancellationToken);
+        Assert.Equal(bootstrapTenant.Id, persistedExceptionCase.TenantId);
+        Assert.Equal(bootstrapInvoice.Id, persistedExceptionCase.InvoiceId);
+        Assert.Equal(demoPurchaseOrder.Id, persistedExceptionCase.PurchaseOrderId);
+        Assert.Equal(matchResult.Id, persistedExceptionCase.MatchResultId);
+        Assert.Equal(MatchExceptionCode.PriceVariance, persistedExceptionCase.Type);
+        Assert.Equal(ExceptionCaseStatus.Open, persistedExceptionCase.Status);
+        Assert.Null(persistedExceptionCase.ResolvedAtUtc);
 
         var bootstrapUser = await invoiceReadContext.Users
             .SingleAsync(user => user.Email == bootstrapEmail, cancellationToken);
@@ -322,6 +350,7 @@ public sealed class AppHostTests
         Assert.Empty(await otherTenantContext.InvoiceExtractionSnapshots.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.MatchingRules.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.MatchResults.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.ExceptionCases.ToListAsync(cancellationToken));
         Assert.DoesNotContain(
             uploadedInvoiceId,
             await otherTenantContext.InvoiceExtractionSnapshots
@@ -452,6 +481,7 @@ public sealed class AppHostTests
         Assert.Empty(await missingTenantContext.InvoiceLines.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.MatchingRules.ToListAsync(cancellationToken));
         Assert.Empty(await missingTenantContext.MatchResults.ToListAsync(cancellationToken));
+        Assert.Empty(await missingTenantContext.ExceptionCases.ToListAsync(cancellationToken));
 
         using var invalidClient = app.CreateHttpClient("web", "http");
         var invalidLoginPage = await invalidClient.GetAsync("/account/login", cancellationToken);
