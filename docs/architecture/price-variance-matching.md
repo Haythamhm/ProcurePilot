@@ -19,4 +19,8 @@ Each persisted `MatchResult` snapshots the invoice and PO unit prices, allowed t
 
 Database constraints also enforce positive rule versions, valid tolerance bounds, a positive PO reference price, and consistency between the status and exception code. Historical results are retained independently from later rule versions.
 
+## Unit-test coverage — PP-16
+
+The unit suite covers the two acceptance references and the deterministic boundary rules: variance above tolerance fails, variance within tolerance passes, positive and negative values exactly on the boundary pass, equal prices pass with zero tolerance, and a 100% variance passes at the inclusive maximum tolerance. It also covers exact-versus-rounded comparison, invalid zero PO price, cross-tenant inputs, and rule effective dates.
+
 PP-15 does not select candidate PO lines, automate exception resolution, or add a matching UI. Those remain separate backlog slices.

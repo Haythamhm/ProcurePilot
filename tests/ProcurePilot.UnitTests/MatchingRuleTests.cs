@@ -63,6 +63,21 @@ public sealed class MatchingRuleTests
             DateTimeOffset.UtcNow));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(100)]
+    public void RuleAcceptsInclusiveToleranceBounds(double tolerance)
+    {
+        var rule = new MatchingRule(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            MatchingRuleType.PriceVariance,
+            Convert.ToDecimal(tolerance),
+            DateTimeOffset.UtcNow);
+
+        Assert.Equal(Convert.ToDecimal(tolerance), rule.AllowedTolerancePercent);
+    }
+
     [Fact]
     public void RuleRejectsInvalidIdentityAndType()
     {
