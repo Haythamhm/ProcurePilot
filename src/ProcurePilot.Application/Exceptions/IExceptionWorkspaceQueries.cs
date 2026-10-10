@@ -7,6 +7,13 @@ public interface IExceptionWorkspaceQueries
         CancellationToken cancellationToken = default);
 }
 
+public sealed record ExceptionWorkspaceEvidenceReadModel(
+    string Type,
+    string Label,
+    string SourceReference,
+    string ValueText,
+    DateTimeOffset RecordedAtUtc);
+
 public sealed record ExceptionWorkspaceReadModel(
     Guid Id,
     string Type,
@@ -33,4 +40,5 @@ public sealed record ExceptionWorkspaceReadModel(
     decimal AllowedTolerancePercent,
     string MatchingRuleType,
     int MatchingRuleVersion,
-    DateTimeOffset EvaluatedAtUtc);
+    DateTimeOffset EvaluatedAtUtc,
+    IReadOnlyList<ExceptionWorkspaceEvidenceReadModel> Evidences);
