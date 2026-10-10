@@ -23,4 +23,8 @@ Database constraints also enforce positive rule versions, valid tolerance bounds
 
 The unit suite covers the two acceptance references and the deterministic boundary rules: variance above tolerance fails, variance within tolerance passes, positive and negative values exactly on the boundary pass, equal prices pass with zero tolerance, and a 100% variance passes at the inclusive maximum tolerance. It also covers exact-versus-rounded comparison, invalid zero PO price, cross-tenant inputs, and rule effective dates.
 
+## Application orchestration — PP-18
+
+`IPriceVarianceMatchingService` is the tenant-scoped application boundary for executing a price match. It loads the reviewed invoice line, purchase-order line, and matching rule through tenant-filtered queries, evaluates the domain rule, and persists the result atomically with a single linked `ExceptionCase` when the outcome is `Failed`. A `Passed` result never creates an exception. The LLM is not involved.
+
 PP-15 does not select candidate PO lines, automate exception resolution, or add a matching UI. Those remain separate backlog slices.

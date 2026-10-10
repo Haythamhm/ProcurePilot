@@ -10,8 +10,10 @@ using ProcurePilot.Infrastructure.Persistence;
 using ProcurePilot.Infrastructure.Persistence.Queries;
 using ProcurePilot.Application.Invoices.Upload;
 using ProcurePilot.Application.Invoices.Review;
+using ProcurePilot.Application.Matching;
 using ProcurePilot.Application.Dashboard;
 using ProcurePilot.Infrastructure.Invoices;
+using ProcurePilot.Infrastructure.Matching;
 using ProcurePilot.Infrastructure.Storage;
 
 namespace ProcurePilot.Infrastructure;
@@ -40,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceDocumentStorage, AzureBlobInvoiceDocumentStorage>();
         services.AddScoped<IInvoiceUploadService, InvoiceUploadService>();
         services.AddScoped<IInvoiceExtractionReviewService, InvoiceExtractionReviewService>();
+        services.AddScoped<IPriceVarianceMatchingService, PriceVarianceMatchingService>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
