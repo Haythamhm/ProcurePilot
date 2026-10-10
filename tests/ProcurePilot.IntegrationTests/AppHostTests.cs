@@ -110,6 +110,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddExceptionCaseStateMachine", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddExceptionQueuePrioritization", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -203,6 +206,8 @@ public sealed class AppHostTests
         matchingServices.AddLogging();
         matchingServices.AddDataProtection();
         matchingServices.AddScoped<ITenantContext>(_ => new TestTenantContext(bootstrapTenant.Id));
+        matchingServices.Configure<ExceptionManagementOptions>(options =>
+            options.DefaultPriceVarianceSeverity = ExceptionSeverity.High);
         matchingServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
         matchingServices.AddSingleton<TimeProvider>(new TestTimeProvider(
             initialMatchingRule.EffectiveFromUtc.AddMinutes(1)));
@@ -239,6 +244,8 @@ public sealed class AppHostTests
         crossTenantMatchingServices.AddLogging();
         crossTenantMatchingServices.AddDataProtection();
         crossTenantMatchingServices.AddScoped<ITenantContext>(_ => new TestTenantContext(otherTenant.Id));
+        crossTenantMatchingServices.Configure<ExceptionManagementOptions>(options =>
+            options.DefaultPriceVarianceSeverity = ExceptionSeverity.High);
         crossTenantMatchingServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
         crossTenantMatchingServices.AddSingleton<TimeProvider>(new TestTimeProvider(
             initialMatchingRule.EffectiveFromUtc.AddMinutes(1)));
@@ -302,6 +309,7 @@ public sealed class AppHostTests
         Assert.Equal(failedOutcome.MatchResultId, persistedExceptionCase.MatchResultId);
         Assert.Equal(MatchExceptionCode.PriceVariance, persistedExceptionCase.Type);
         Assert.Equal(ExceptionCaseStatus.New, persistedExceptionCase.Status);
+        Assert.Equal(ExceptionSeverity.High, persistedExceptionCase.Severity);
         Assert.Null(persistedExceptionCase.ResolvedAtUtc);
         Assert.Equal(2, await invoiceReadContext.MatchResults.CountAsync(cancellationToken));
         Assert.Equal(1, await invoiceReadContext.ExceptionCases.CountAsync(
@@ -310,6 +318,11 @@ public sealed class AppHostTests
         Assert.False(await invoiceReadContext.ExceptionCases.AnyAsync(
             value => value.MatchResultId == passedOutcome.MatchResultId,
             cancellationToken));
+
+        var bootstrapUser = await invoiceReadContext.Users
+            .SingleAsync(user => user.Email == bootstrapEmail, cancellationToken);
+        persistedExceptionCase.AssignTo(bootstrapUser.Id);
+        await invoiceReadContext.SaveChangesAsync(cancellationToken);
 
         var queueServices = new ServiceCollection();
         queueServices.AddLogging();
@@ -321,12 +334,42 @@ public sealed class AppHostTests
         {
             var workQueue = await queueScope.ServiceProvider
                 .GetRequiredService<IExceptionWorkQueueQueries>()
-                .ListOpenAsync(cancellationToken);
+                .ListAsync(ExceptionWorkQueueFilter.Open, cancellationToken: cancellationToken);
             var queueItem = Assert.Single(workQueue);
             Assert.Equal(persistedExceptionCase.Id, queueItem.Id);
             Assert.Equal(VendorBootstrapper.AtlasName, queueItem.VendorName);
             Assert.Equal(nameof(MatchExceptionCode.PriceVariance), queueItem.Type);
             Assert.Equal(nameof(ExceptionCaseStatus.New), queueItem.Status);
+            Assert.Equal(nameof(ExceptionSeverity.High), queueItem.Severity);
+            Assert.Equal(bootstrapUser.Id, queueItem.AssignedToUserId);
+
+            var assignedQueue = await queueScope.ServiceProvider
+                .GetRequiredService<IExceptionWorkQueueQueries>()
+                .ListAsync(
+                    ExceptionWorkQueueFilter.AssignedToMe,
+                    bootstrapUser.Id,
+                    cancellationToken);
+            Assert.Equal(queueItem, Assert.Single(assignedQueue));
+        }
+
+        persistedExceptionCase.TransitionTo(
+            ExceptionCaseStatus.Analyzing,
+            persistedExceptionCase.OpenedAtUtc);
+        persistedExceptionCase.TransitionTo(
+            ExceptionCaseStatus.Open,
+            persistedExceptionCase.OpenedAtUtc);
+        persistedExceptionCase.TransitionTo(
+            ExceptionCaseStatus.Resolved,
+            persistedExceptionCase.OpenedAtUtc.AddMinutes(1));
+        await invoiceReadContext.SaveChangesAsync(cancellationToken);
+
+        await using (var resolvedQueueProvider = queueServices.BuildServiceProvider())
+        await using (var resolvedQueueScope = resolvedQueueProvider.CreateAsyncScope())
+        {
+            var resolvedQueue = await resolvedQueueScope.ServiceProvider
+                .GetRequiredService<IExceptionWorkQueueQueries>()
+                .ListAsync(ExceptionWorkQueueFilter.Resolved, cancellationToken: cancellationToken);
+            Assert.Equal(persistedExceptionCase.Id, Assert.Single(resolvedQueue).Id);
         }
 
         var otherQueueServices = new ServiceCollection();
@@ -339,12 +382,9 @@ public sealed class AppHostTests
         {
             var otherTenantQueue = await otherQueueScope.ServiceProvider
                 .GetRequiredService<IExceptionWorkQueueQueries>()
-                .ListOpenAsync(cancellationToken);
+                .ListAsync(ExceptionWorkQueueFilter.Open, cancellationToken: cancellationToken);
             Assert.Empty(otherTenantQueue);
         }
-
-        var bootstrapUser = await invoiceReadContext.Users
-            .SingleAsync(user => user.Email == bootstrapEmail, cancellationToken);
         var uploadServices = new ServiceCollection();
         uploadServices.AddLogging();
         uploadServices.AddDataProtection();
@@ -624,11 +664,13 @@ public sealed class AppHostTests
         Assert.DoesNotContain(otherTenantPurchaseOrder.Number, purchaseOrdersHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Tenant secret line", purchaseOrdersHtml, StringComparison.Ordinal);
 
-        var workQueueResponse = await client.GetAsync("/work-queue", cancellationToken);
+        var workQueueResponse = await client.GetAsync("/work-queue?view=resolved", cancellationToken);
         Assert.Equal(HttpStatusCode.OK, workQueueResponse.StatusCode);
         var workQueueHtml = await workQueueResponse.Content.ReadAsStringAsync(cancellationToken);
         Assert.Contains("Work Queue", workQueueHtml, StringComparison.Ordinal);
+        Assert.Contains("Resolved", workQueueHtml, StringComparison.Ordinal);
         Assert.Contains("Price variance", workQueueHtml, StringComparison.Ordinal);
+        Assert.Contains("High", workQueueHtml, StringComparison.Ordinal);
         Assert.Contains(VendorBootstrapper.AtlasName, workQueueHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Other Tenant Vendor", workQueueHtml, StringComparison.Ordinal);
 

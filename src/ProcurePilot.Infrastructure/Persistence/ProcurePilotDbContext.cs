@@ -408,6 +408,9 @@ public sealed class ProcurePilotDbContext(
                 table.HasCheckConstraint(
                     "CK_ExceptionCases_ResolvedAt",
                     "\"ResolvedAtUtc\" IS NULL OR \"ResolvedAtUtc\" >= \"OpenedAtUtc\"");
+                table.HasCheckConstraint(
+                    "CK_ExceptionCases_Severity",
+                    "\"Severity\" IN ('Low', 'Medium', 'High', 'Critical')");
             });
             exceptionCase.HasKey(value => value.Id);
             exceptionCase.HasAlternateKey(value => new { value.TenantId, value.Id });
@@ -423,6 +426,11 @@ public sealed class ProcurePilotDbContext(
                 .HasConversion<string>()
                 .HasMaxLength(ExceptionCase.StatusMaxLength)
                 .IsRequired();
+            exceptionCase.Property(value => value.Severity)
+                .HasConversion<string>()
+                .HasMaxLength(ExceptionCase.SeverityMaxLength)
+                .IsRequired();
+            exceptionCase.Property(value => value.AssignedToUserId);
             exceptionCase.Property(value => value.OpenedAtUtc).IsRequired();
             exceptionCase.Property(value => value.ResolvedAtUtc);
             exceptionCase.HasIndex(value => new { value.TenantId, value.MatchResultId })
@@ -430,6 +438,12 @@ public sealed class ProcurePilotDbContext(
             exceptionCase.HasIndex(value => new { value.TenantId, value.InvoiceId });
             exceptionCase.HasIndex(value => new { value.TenantId, value.PurchaseOrderId });
             exceptionCase.HasIndex(value => new { value.TenantId, value.Status, value.OpenedAtUtc });
+            exceptionCase.HasIndex(value => new
+            {
+                value.TenantId,
+                value.AssignedToUserId,
+                value.Status
+            });
             exceptionCase.HasOne<Invoice>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.InvoiceId })
@@ -448,6 +462,11 @@ public sealed class ProcurePilotDbContext(
             exceptionCase.HasOne<Tenant>()
                 .WithMany()
                 .HasForeignKey(value => value.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+            exceptionCase.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, UserId = value.AssignedToUserId })
+                .HasPrincipalKey(value => new { value.TenantId, UserId = value.Id })
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

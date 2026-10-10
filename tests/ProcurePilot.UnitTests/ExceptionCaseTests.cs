@@ -21,6 +21,7 @@ public sealed class ExceptionCaseTests
             fixture.InvoiceLine,
             fixture.PurchaseOrderLine,
             fixture.MatchResult,
+            ExceptionSeverity.Medium,
             openedAt);
 
         Assert.Equal(fixture.TenantId, exceptionCase.TenantId);
@@ -29,6 +30,8 @@ public sealed class ExceptionCaseTests
         Assert.Equal(fixture.MatchResult.Id, exceptionCase.MatchResultId);
         Assert.Equal(MatchExceptionCode.PriceVariance, exceptionCase.Type);
         Assert.Equal(ExceptionCaseStatus.New, exceptionCase.Status);
+        Assert.Equal(ExceptionSeverity.Medium, exceptionCase.Severity);
+        Assert.Null(exceptionCase.AssignedToUserId);
         Assert.Equal(openedAt, exceptionCase.OpenedAtUtc);
         Assert.Null(exceptionCase.ResolvedAtUtc);
     }
@@ -96,6 +99,7 @@ public sealed class ExceptionCaseTests
                 fixture.InvoiceLine,
                 fixture.PurchaseOrderLine,
                 fixture.MatchResult,
+                ExceptionSeverity.Medium,
                 EvaluatedAtUtc.AddMinutes(1)));
     }
 
@@ -111,6 +115,7 @@ public sealed class ExceptionCaseTests
                 otherFixture.InvoiceLine,
                 fixture.PurchaseOrderLine,
                 fixture.MatchResult,
+                ExceptionSeverity.Medium,
                 EvaluatedAtUtc.AddMinutes(1)));
 
         Assert.Throws<InvalidOperationException>(() =>
@@ -119,6 +124,7 @@ public sealed class ExceptionCaseTests
                 fixture.InvoiceLine,
                 otherFixture.PurchaseOrderLine,
                 fixture.MatchResult,
+                ExceptionSeverity.Medium,
                 EvaluatedAtUtc.AddMinutes(1)));
     }
 
@@ -133,6 +139,7 @@ public sealed class ExceptionCaseTests
                 fixture.InvoiceLine,
                 fixture.PurchaseOrderLine,
                 fixture.MatchResult,
+                ExceptionSeverity.Medium,
                 EvaluatedAtUtc.AddTicks(-1)));
 
         var exceptionCase = CreateExceptionCase();
@@ -140,6 +147,34 @@ public sealed class ExceptionCaseTests
             exceptionCase.TransitionTo(
                 ExceptionCaseStatus.Analyzing,
                 exceptionCase.OpenedAtUtc.AddTicks(-1)));
+    }
+
+    [Fact]
+    public void AssignmentRequiresAUserIdentifier()
+    {
+        var exceptionCase = CreateExceptionCase();
+        var userId = Guid.NewGuid();
+
+        exceptionCase.AssignTo(userId);
+
+        Assert.Equal(userId, exceptionCase.AssignedToUserId);
+        Assert.Throws<ArgumentException>(() => exceptionCase.AssignTo(Guid.Empty));
+        Assert.Equal(userId, exceptionCase.AssignedToUserId);
+    }
+
+    [Fact]
+    public void SeverityMustBeDefined()
+    {
+        var fixture = CreateFixture(failed: true);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ExceptionCase.CreateFromFailedMatch(
+                Guid.NewGuid(),
+                fixture.InvoiceLine,
+                fixture.PurchaseOrderLine,
+                fixture.MatchResult,
+                (ExceptionSeverity)999,
+                EvaluatedAtUtc.AddMinutes(1)));
     }
 
     private static void Transition(ExceptionCase exceptionCase, ExceptionCaseStatus status) =>
@@ -153,6 +188,7 @@ public sealed class ExceptionCaseTests
             fixture.InvoiceLine,
             fixture.PurchaseOrderLine,
             fixture.MatchResult,
+            ExceptionSeverity.Medium,
             EvaluatedAtUtc.AddMinutes(1));
     }
 

@@ -9,6 +9,7 @@ public sealed class ExceptionCase : ITenantScopedEntity
 {
     public const int TypeMaxLength = 64;
     public const int StatusMaxLength = 32;
+    public const int SeverityMaxLength = 16;
 
     private static readonly IReadOnlyDictionary<ExceptionCaseStatus, ExceptionCaseStatus[]> AllowedTransitions =
         new Dictionary<ExceptionCaseStatus, ExceptionCaseStatus[]>
@@ -46,6 +47,7 @@ public sealed class ExceptionCase : ITenantScopedEntity
         Guid purchaseOrderId,
         Guid matchResultId,
         MatchExceptionCode type,
+        ExceptionSeverity severity,
         DateTimeOffset openedAtUtc)
     {
         Id = id;
@@ -54,6 +56,7 @@ public sealed class ExceptionCase : ITenantScopedEntity
         PurchaseOrderId = purchaseOrderId;
         MatchResultId = matchResultId;
         Type = type;
+        Severity = severity;
         Status = ExceptionCaseStatus.New;
         OpenedAtUtc = openedAtUtc;
     }
@@ -72,6 +75,10 @@ public sealed class ExceptionCase : ITenantScopedEntity
 
     public ExceptionCaseStatus Status { get; private set; }
 
+    public ExceptionSeverity Severity { get; private set; }
+
+    public Guid? AssignedToUserId { get; private set; }
+
     public DateTimeOffset OpenedAtUtc { get; private set; }
 
     public DateTimeOffset? ResolvedAtUtc { get; private set; }
@@ -81,6 +88,7 @@ public sealed class ExceptionCase : ITenantScopedEntity
         InvoiceLine invoiceLine,
         PurchaseOrderLine purchaseOrderLine,
         MatchResult matchResult,
+        ExceptionSeverity severity,
         DateTimeOffset openedAtUtc)
     {
         if (id == Guid.Empty)
@@ -113,6 +121,11 @@ public sealed class ExceptionCase : ITenantScopedEntity
                 "Only a failed match result with an exception code can create an exception case.");
         }
 
+        if (!Enum.IsDefined(severity))
+        {
+            throw new ArgumentOutOfRangeException(nameof(severity));
+        }
+
         var openedAt = openedAtUtc.ToUniversalTime();
         if (openedAt < matchResult.EvaluatedAtUtc)
         {
@@ -128,7 +141,18 @@ public sealed class ExceptionCase : ITenantScopedEntity
             purchaseOrderLine.PurchaseOrderId,
             matchResult.Id,
             matchResult.ExceptionCode.Value,
+            severity,
             openedAt);
+    }
+
+    public void AssignTo(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("An assigned user identifier is required.", nameof(userId));
+        }
+
+        AssignedToUserId = userId;
     }
 
     public void TransitionTo(ExceptionCaseStatus nextStatus, DateTimeOffset occurredAtUtc)

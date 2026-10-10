@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Application.Security;
 using ProcurePilot.Application.Invoices.Review;
+using ProcurePilot.Application.Exceptions;
 using ProcurePilot.Infrastructure;
 using ProcurePilot.Infrastructure.Persistence;
 using ProcurePilot.Web.Components;
@@ -44,6 +45,13 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/account/logout";
     options.SlidingExpiration = true;
 });
+builder.Services
+    .AddOptions<ExceptionManagementOptions>()
+    .Bind(builder.Configuration.GetSection(ExceptionManagementOptions.SectionName))
+    .Validate(
+        options => Enum.IsDefined(options.DefaultPriceVarianceSeverity),
+        "A supported default severity is required for price variance exceptions.")
+    .ValidateOnStart();
 builder.Services
     .AddOptions<InvoiceExtractionReviewOptions>()
     .Bind(builder.Configuration.GetSection(InvoiceExtractionReviewOptions.SectionName))

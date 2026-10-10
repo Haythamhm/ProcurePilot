@@ -1,0 +1,116 @@
+.queue-panel {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.queue-panel-heading {
+    align-items: center;
+    border-bottom: 1px solid var(--pp-muted);
+    display: flex;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+}
+
+.queue-panel-heading h2 {
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.queue-panel-heading > p {
+    color: var(--pp-primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.queue-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+
+.queue-table {
+    border-collapse: collapse;
+    color: var(--pp-ink);
+    min-width: 62rem;
+    width: 100%;
+}
+
+.queue-table th,
+.queue-table td {
+    border-bottom: 1px solid var(--pp-muted);
+    padding: 1rem 1.5rem;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.queue-table thead th {
+    background: rgb(155 164 181 / 22%);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.queue-table tbody tr:last-child th,
+.queue-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.queue-table tbody tr:hover {
+    background: rgb(155 164 181 / 12%);
+}
+
+.case-reference {
+    color: var(--pp-ink);
+    font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.82rem;
+    letter-spacing: 0.03em;
+}
+
+.case-status,
+.severity {
+    align-items: center;
+    border: 1px solid var(--pp-primary);
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 800;
+    gap: 0.45rem;
+    padding: 0.25rem 0.6rem;
+    white-space: nowrap;
+}
+
+.case-status > span {
+    background: var(--pp-primary);
+    border-radius: 50%;
+    height: 0.45rem;
+    width: 0.45rem;
+}
+
+.severity-high,
+.severity-critical {
+    background: var(--pp-ink);
+    border-color: var(--pp-ink);
+    color: var(--pp-surface);
+}
+
+.severity-medium {
+    background: rgb(155 164 181 / 28%);
+}
+
+.queue-table time {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+    .queue-panel-heading,
+    .queue-table th,
+    .queue-table td {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}

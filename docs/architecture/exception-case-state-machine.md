@@ -6,7 +6,7 @@
 
 PP-18 adds the application orchestration through `IPriceVarianceMatchingService`: the service loads tenant-filtered inputs, evaluates and persists the deterministic `MatchResult`, and creates the linked `ExceptionCase` in the same database unit of work only when the result fails. A passed result persists without an exception. The unique `(TenantId, MatchResultId)` index remains the database guard against duplicate cases.
 
-Severity, age, assignment, and queue filtering remain PP-20 scope.
+PP-20 adds mandatory `ExceptionSeverity` and optional tenant-safe `AssignedToUserId`. The initial `PRICE_VARIANCE` severity is supplied by validated application configuration; age remains derived from `OpenedAtUtc`. The assignment field supports read-side queue filtering only, while the full assignment workflow remains P1.
 
 ## Allowed transitions
 
