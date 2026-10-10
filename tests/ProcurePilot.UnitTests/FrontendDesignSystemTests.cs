@@ -125,13 +125,25 @@ public sealed partial class FrontendDesignSystemTests
             "Components",
             "Pages",
             "WorkQueue.razor"));
+        var workQueueTable = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "ProcurePilot.Web",
+            "Components",
+            "Shared",
+            "WorkQueueTable.razor"));
 
         Assert.Contains("IExceptionWorkQueueQueries", workQueue, StringComparison.Ordinal);
         Assert.Contains("AuthorizationPolicies.ActiveTenant", workQueue, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", workQueue, StringComparison.Ordinal);
-        Assert.Contains("<caption class=\"visually-hidden\">", workQueue, StringComparison.Ordinal);
-        Assert.Contains("scope=\"col\"", workQueue, StringComparison.Ordinal);
-        Assert.Contains("scope=\"row\"", workQueue, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Work queue views\"", workQueue, StringComparison.Ordinal);
+        Assert.Contains("aria-current", workQueue, StringComparison.Ordinal);
+        Assert.Contains("ExceptionWorkQueueFilter.AssignedToMe", workQueue, StringComparison.Ordinal);
+        Assert.Contains("<caption class=\"visually-hidden\">", workQueueTable, StringComparison.Ordinal);
+        Assert.Contains("scope=\"col\"", workQueueTable, StringComparison.Ordinal);
+        Assert.Contains("scope=\"row\"", workQueueTable, StringComparison.Ordinal);
+        Assert.Contains(">Age<", workQueueTable, StringComparison.Ordinal);
+        Assert.Contains(">Priority<", workQueueTable, StringComparison.Ordinal);
         Assert.DoesNotContain("TODO", workQueue, StringComparison.OrdinalIgnoreCase);
     }
 

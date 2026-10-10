@@ -1,0 +1,81 @@
+@using ProcurePilot.Application.Exceptions
+@inject TimeProvider TimeProvider
+
+<section class="queue-panel" aria-labelledby="queue-table-heading">
+    <div class="queue-panel-heading">
+        <div>
+            <p class="card-kicker">Current workload</p>
+            <h2 id="queue-table-heading">@Heading</h2>
+        </div>
+        <p>Oldest cases first</p>
+    </div>
+
+    <div class="queue-table-wrap" tabindex="0" aria-label="Scrollable exception table">
+        <table class="queue-table">
+            <caption class="visually-hidden">@Caption</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Exception ID</th>
+                    <th scope="col">Vendor</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Age</th>
+                    <th scope="col">Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var exceptionCase in Items)
+                {
+                    <tr>
+                        <th scope="row"><span class="case-reference">@CaseReference(exceptionCase.Id)</span></th>
+                        <td><strong>@exceptionCase.VendorName</strong></td>
+                        <td>@TypeLabel(exceptionCase.Type)</td>
+                        <td><span class="case-status"><span aria-hidden="true"></span>@StatusLabel(exceptionCase.Status)</span></td>
+                        <td>
+                            <time datetime="@exceptionCase.OpenedAtUtc.ToString("O")"
+                                  title="Opened @exceptionCase.OpenedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")">
+                                @AgeLabel(exceptionCase.OpenedAtUtc)
+                            </time>
+                        </td>
+                        <td><span class="severity severity-@exceptionCase.Severity.ToLowerInvariant()">@exceptionCase.Severity</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<ExceptionWorkQueueItem> Items { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Heading { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Caption { get; set; }
+
+    private string AgeLabel(DateTimeOffset openedAtUtc)
+    {
+        var age = TimeProvider.GetUtcNow() - openedAtUtc;
+        if (age < TimeSpan.Zero)
+        {
+            age = TimeSpan.Zero;
+        }
+
+        return age.TotalDays >= 1
+            ? $"{(int)age.TotalDays}d"
+            : age.TotalHours >= 1
+                ? $"{(int)age.TotalHours}h"
+                : "< 1h";
+    }
+
+    private static string CaseReference(Guid id) => $"EXC-{id:N}"[..12].ToUpperInvariant();
+    private static string TypeLabel(string type) => type is "PriceVariance" ? "Price variance" : type;
+    private static string StatusLabel(string status) => status switch
+    {
+        "WaitingAction" => "Waiting for action",
+        "WaitingExternal" => "Waiting externally",
+        _ => status
+    };
+}

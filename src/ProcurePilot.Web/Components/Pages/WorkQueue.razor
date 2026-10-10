@@ -1,6 +1,8 @@
 @page "/work-queue"
+@using System.Security.Claims
 @using ProcurePilot.Application.Exceptions
 @inject IExceptionWorkQueueQueries WorkQueueQueries
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<WorkQueue> Logger
 
 @attribute [Authorize(Policy = AuthorizationPolicies.ActiveTenant)]
@@ -11,23 +13,33 @@
     <div>
         <p class="eyebrow">Exception operations</p>
         <h1>Work Queue</h1>
-        <p class="page-summary">Review the open cases that need attention in this tenant.</p>
+        <p class="page-summary">Prioritize tenant-protected exception cases without losing their business context.</p>
     </div>
     @if (!_isLoading && !_loadFailed)
     {
-        <div class="queue-count" aria-label="@OpenCaseCountLabel">
-            <strong>@_openCases.Count</strong>
-            <span>Open @(_openCases.Count == 1 ? "case" : "cases")</span>
+        <div class="queue-count" aria-label="@CountLabel">
+            <strong>@_items.Count</strong>
+            <span>@FilterLabel</span>
         </div>
     }
 </header>
+
+<nav class="queue-filters" aria-label="Work queue views">
+    @foreach (var filter in Filters)
+    {
+        <a href="@FilterUrl(filter.Value)" aria-current="@(filter.Value == _filter ? "page" : null)">
+            <span>@filter.Label</span>
+            <small>@filter.Description</small>
+        </a>
+    }
+</nav>
 
 @if (_isLoading)
 {
     <div class="queue-state" role="status" aria-live="polite" aria-busy="true">
         <span class="queue-spinner" aria-hidden="true"></span>
         <div>
-            <strong>Loading the work queue</strong>
+            <strong>Loading @FilterLabel.ToLowerInvariant()</strong>
             <p>Retrieving tenant-protected exception cases…</p>
         </div>
     </div>
@@ -37,84 +49,82 @@ else if (_loadFailed)
     <SystemState Eyebrow="Work queue"
                  Marker="!"
                  Title="The work queue is unavailable"
-                 Description="Open exception cases could not be loaded. No case was changed.">
-        <Actions><a class="btn btn-outline-secondary" href="work-queue">Try again</a></Actions>
+                 Description="Exception cases could not be loaded. No case was changed.">
+        <Actions><a class="btn btn-outline-secondary" href="@FilterUrl(_filter)">Try again</a></Actions>
     </SystemState>
 }
-else if (_openCases.Count == 0)
+else if (_items.Count == 0)
 {
-    <SystemState Eyebrow="Work queue"
+    <SystemState Eyebrow="@FilterLabel"
                  Marker="✓"
-                 Title="No open exceptions"
-                 Description="There are no exception cases requiring attention for this tenant." />
+                 Title="@EmptyTitle"
+                 Description="@EmptyDescription" />
 }
 else
 {
-    <section class="queue-panel" aria-labelledby="open-cases-heading">
-        <div class="queue-panel-heading">
-            <div>
-                <p class="card-kicker">Current workload</p>
-                <h2 id="open-cases-heading">Open exceptions</h2>
-            </div>
-            <p>Oldest cases first</p>
-        </div>
-
-        <div class="queue-table-wrap" tabindex="0" aria-label="Scrollable open exception table">
-            <table class="queue-table">
-                <caption class="visually-hidden">Open exception cases for the active tenant</caption>
-                <thead>
-                    <tr>
-                        <th scope="col">Exception ID</th>
-                        <th scope="col">Vendor</th>
-                        <th scope="col">Type</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Opened</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var exceptionCase in _openCases)
-                    {
-                        <tr>
-                            <th scope="row">
-                                <span class="case-reference">@CaseReference(exceptionCase.Id)</span>
-                            </th>
-                            <td><strong>@exceptionCase.VendorName</strong></td>
-                            <td>@TypeLabel(exceptionCase.Type)</td>
-                            <td>
-                                <span class="case-status">
-                                    <span aria-hidden="true"></span>
-                                    @StatusLabel(exceptionCase.Status)
-                                </span>
-                            </td>
-                            <td>
-                                <time datetime="@exceptionCase.OpenedAtUtc.ToString("O")">
-                                    @exceptionCase.OpenedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")
-                                </time>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </section>
+    <WorkQueueTable Items="_items"
+                    Heading="@FilterLabel"
+                    Caption="@TableCaption" />
 }
 
 @code {
-    private IReadOnlyList<ExceptionWorkQueueItem> _openCases = [];
+    private static readonly QueueFilterOption[] Filters =
+    [
+        new(ExceptionWorkQueueFilter.Open, "Open", "Needs attention"),
+        new(ExceptionWorkQueueFilter.Resolved, "Resolved", "Completed cases"),
+        new(ExceptionWorkQueueFilter.AssignedToMe, "Assigned to me", "My active cases")
+    ];
+
+    private IReadOnlyList<ExceptionWorkQueueItem> _items = [];
+    private ExceptionWorkQueueFilter _filter = ExceptionWorkQueueFilter.Open;
     private bool _isLoading = true;
     private bool _loadFailed;
 
-    private string OpenCaseCountLabel => $"{_openCases.Count} open exception {(_openCases.Count == 1 ? "case" : "cases")}";
+    [SupplyParameterFromQuery(Name = "view")]
+    public string? View { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    private string FilterLabel => Filters.Single(option => option.Value == _filter).Label;
+    private string CountLabel => $"{_items.Count} cases in {FilterLabel.ToLowerInvariant()}";
+    private string TableCaption => $"{FilterLabel} exception cases for the active tenant";
+    private string EmptyTitle => _filter switch
     {
+        ExceptionWorkQueueFilter.Open => "No open exceptions",
+        ExceptionWorkQueueFilter.Resolved => "No resolved exceptions",
+        ExceptionWorkQueueFilter.AssignedToMe => "No cases assigned to you",
+        _ => "No exception cases"
+    };
+    private string EmptyDescription => _filter switch
+    {
+        ExceptionWorkQueueFilter.Open => "There are no exception cases requiring attention for this tenant.",
+        ExceptionWorkQueueFilter.Resolved => "Resolved cases will appear here when work is completed.",
+        ExceptionWorkQueueFilter.AssignedToMe => "Your active assigned cases will appear here.",
+        _ => "There are no exception cases in this view."
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _filter = ParseFilter(View);
+        _isLoading = true;
+        _loadFailed = false;
+
         try
         {
-            _openCases = await WorkQueueQueries.ListOpenAsync();
+            Guid? currentUserId = null;
+            if (_filter is ExceptionWorkQueueFilter.AssignedToMe)
+            {
+                var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var identifier = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+                currentUserId = Guid.TryParse(identifier, out var userId)
+                    ? userId
+                    : throw new InvalidOperationException("The authenticated user identifier is unavailable.");
+            }
+
+            _items = await WorkQueueQueries.ListAsync(_filter, currentUserId);
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load the exception work queue for the active tenant.");
+            Logger.LogError(exception, "Failed to load {Filter} exception cases for the active tenant.", _filter);
+            _items = [];
             _loadFailed = true;
         }
         finally
@@ -123,18 +133,23 @@ else
         }
     }
 
-    private static string CaseReference(Guid id) => $"EXC-{id:N}"[..12].ToUpperInvariant();
-
-    private static string TypeLabel(string type) => type switch
+    private static ExceptionWorkQueueFilter ParseFilter(string? view) => view?.ToLowerInvariant() switch
     {
-        "PriceVariance" => "Price variance",
-        _ => type
+        "resolved" => ExceptionWorkQueueFilter.Resolved,
+        "mine" => ExceptionWorkQueueFilter.AssignedToMe,
+        _ => ExceptionWorkQueueFilter.Open
     };
 
-    private static string StatusLabel(string status) => status switch
+    private static string FilterUrl(ExceptionWorkQueueFilter filter) => filter switch
     {
-        "WaitingAction" => "Waiting for action",
-        "WaitingExternal" => "Waiting externally",
-        _ => status
+        ExceptionWorkQueueFilter.Open => "/work-queue?view=open",
+        ExceptionWorkQueueFilter.Resolved => "/work-queue?view=resolved",
+        ExceptionWorkQueueFilter.AssignedToMe => "/work-queue?view=mine",
+        _ => "/work-queue"
     };
+
+    private sealed record QueueFilterOption(
+        ExceptionWorkQueueFilter Value,
+        string Label,
+        string Description);
 }
