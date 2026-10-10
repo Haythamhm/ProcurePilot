@@ -1,0 +1,140 @@
+@page "/work-queue"
+@using ProcurePilot.Application.Exceptions
+@inject IExceptionWorkQueueQueries WorkQueueQueries
+@inject ILogger<WorkQueue> Logger
+
+@attribute [Authorize(Policy = AuthorizationPolicies.ActiveTenant)]
+
+<PageTitle>Work Queue | ProcurePilot</PageTitle>
+
+<header class="queue-heading">
+    <div>
+        <p class="eyebrow">Exception operations</p>
+        <h1>Work Queue</h1>
+        <p class="page-summary">Review the open cases that need attention in this tenant.</p>
+    </div>
+    @if (!_isLoading && !_loadFailed)
+    {
+        <div class="queue-count" aria-label="@OpenCaseCountLabel">
+            <strong>@_openCases.Count</strong>
+            <span>Open @(_openCases.Count == 1 ? "case" : "cases")</span>
+        </div>
+    }
+</header>
+
+@if (_isLoading)
+{
+    <div class="queue-state" role="status" aria-live="polite" aria-busy="true">
+        <span class="queue-spinner" aria-hidden="true"></span>
+        <div>
+            <strong>Loading the work queue</strong>
+            <p>Retrieving tenant-protected exception cases…</p>
+        </div>
+    </div>
+}
+else if (_loadFailed)
+{
+    <SystemState Eyebrow="Work queue"
+                 Marker="!"
+                 Title="The work queue is unavailable"
+                 Description="Open exception cases could not be loaded. No case was changed.">
+        <Actions><a class="btn btn-outline-secondary" href="work-queue">Try again</a></Actions>
+    </SystemState>
+}
+else if (_openCases.Count == 0)
+{
+    <SystemState Eyebrow="Work queue"
+                 Marker="✓"
+                 Title="No open exceptions"
+                 Description="There are no exception cases requiring attention for this tenant." />
+}
+else
+{
+    <section class="queue-panel" aria-labelledby="open-cases-heading">
+        <div class="queue-panel-heading">
+            <div>
+                <p class="card-kicker">Current workload</p>
+                <h2 id="open-cases-heading">Open exceptions</h2>
+            </div>
+            <p>Oldest cases first</p>
+        </div>
+
+        <div class="queue-table-wrap" tabindex="0" aria-label="Scrollable open exception table">
+            <table class="queue-table">
+                <caption class="visually-hidden">Open exception cases for the active tenant</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Exception ID</th>
+                        <th scope="col">Vendor</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Opened</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var exceptionCase in _openCases)
+                    {
+                        <tr>
+                            <th scope="row">
+                                <span class="case-reference">@CaseReference(exceptionCase.Id)</span>
+                            </th>
+                            <td><strong>@exceptionCase.VendorName</strong></td>
+                            <td>@TypeLabel(exceptionCase.Type)</td>
+                            <td>
+                                <span class="case-status">
+                                    <span aria-hidden="true"></span>
+                                    @StatusLabel(exceptionCase.Status)
+                                </span>
+                            </td>
+                            <td>
+                                <time datetime="@exceptionCase.OpenedAtUtc.ToString("O")">
+                                    @exceptionCase.OpenedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")
+                                </time>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<ExceptionWorkQueueItem> _openCases = [];
+    private bool _isLoading = true;
+    private bool _loadFailed;
+
+    private string OpenCaseCountLabel => $"{_openCases.Count} open exception {(_openCases.Count == 1 ? "case" : "cases")}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _openCases = await WorkQueueQueries.ListOpenAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load the exception work queue for the active tenant.");
+            _loadFailed = true;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string CaseReference(Guid id) => $"EXC-{id:N}"[..12].ToUpperInvariant();
+
+    private static string TypeLabel(string type) => type switch
+    {
+        "PriceVariance" => "Price variance",
+        _ => type
+    };
+
+    private static string StatusLabel(string status) => status switch
+    {
+        "WaitingAction" => "Waiting for action",
+        "WaitingExternal" => "Waiting externally",
+        _ => status
+    };
+}

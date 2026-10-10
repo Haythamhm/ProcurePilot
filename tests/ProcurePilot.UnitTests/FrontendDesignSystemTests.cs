@@ -114,6 +114,27 @@ public sealed partial class FrontendDesignSystemTests
         Assert.Contains("aria-current=\"step\"", review, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WorkQueueUsesTenantScopedQueryAndAccessibleTableStates()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var workQueue = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "ProcurePilot.Web",
+            "Components",
+            "Pages",
+            "WorkQueue.razor"));
+
+        Assert.Contains("IExceptionWorkQueueQueries", workQueue, StringComparison.Ordinal);
+        Assert.Contains("AuthorizationPolicies.ActiveTenant", workQueue, StringComparison.Ordinal);
+        Assert.Contains("aria-live=\"polite\"", workQueue, StringComparison.Ordinal);
+        Assert.Contains("<caption class=\"visually-hidden\">", workQueue, StringComparison.Ordinal);
+        Assert.Contains("scope=\"col\"", workQueue, StringComparison.Ordinal);
+        Assert.Contains("scope=\"row\"", workQueue, StringComparison.Ordinal);
+        Assert.DoesNotContain("TODO", workQueue, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
