@@ -12,6 +12,7 @@ using ProcurePilot.Application.Invoices.Upload;
 using ProcurePilot.Application.Invoices.Extraction;
 using ProcurePilot.Application.Invoices.Review;
 using ProcurePilot.Application.Matching;
+using ProcurePilot.Application.Exceptions;
 using ProcurePilot.Domain.Exceptions;
 using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Matching;
@@ -310,6 +311,38 @@ public sealed class AppHostTests
             value => value.MatchResultId == passedOutcome.MatchResultId,
             cancellationToken));
 
+        var queueServices = new ServiceCollection();
+        queueServices.AddLogging();
+        queueServices.AddDataProtection();
+        queueServices.AddScoped<ITenantContext>(_ => new TestTenantContext(bootstrapTenant.Id));
+        queueServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
+        await using (var queueProvider = queueServices.BuildServiceProvider())
+        await using (var queueScope = queueProvider.CreateAsyncScope())
+        {
+            var workQueue = await queueScope.ServiceProvider
+                .GetRequiredService<IExceptionWorkQueueQueries>()
+                .ListOpenAsync(cancellationToken);
+            var queueItem = Assert.Single(workQueue);
+            Assert.Equal(persistedExceptionCase.Id, queueItem.Id);
+            Assert.Equal(VendorBootstrapper.AtlasName, queueItem.VendorName);
+            Assert.Equal(nameof(MatchExceptionCode.PriceVariance), queueItem.Type);
+            Assert.Equal(nameof(ExceptionCaseStatus.New), queueItem.Status);
+        }
+
+        var otherQueueServices = new ServiceCollection();
+        otherQueueServices.AddLogging();
+        otherQueueServices.AddDataProtection();
+        otherQueueServices.AddScoped<ITenantContext>(_ => new TestTenantContext(otherTenant.Id));
+        otherQueueServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
+        await using (var otherQueueProvider = otherQueueServices.BuildServiceProvider())
+        await using (var otherQueueScope = otherQueueProvider.CreateAsyncScope())
+        {
+            var otherTenantQueue = await otherQueueScope.ServiceProvider
+                .GetRequiredService<IExceptionWorkQueueQueries>()
+                .ListOpenAsync(cancellationToken);
+            Assert.Empty(otherTenantQueue);
+        }
+
         var bootstrapUser = await invoiceReadContext.Users
             .SingleAsync(user => user.Email == bootstrapEmail, cancellationToken);
         var uploadServices = new ServiceCollection();
@@ -590,6 +623,14 @@ public sealed class AppHostTests
         Assert.Contains("Purchase Orders", purchaseOrdersHtml, StringComparison.Ordinal);
         Assert.DoesNotContain(otherTenantPurchaseOrder.Number, purchaseOrdersHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Tenant secret line", purchaseOrdersHtml, StringComparison.Ordinal);
+
+        var workQueueResponse = await client.GetAsync("/work-queue", cancellationToken);
+        Assert.Equal(HttpStatusCode.OK, workQueueResponse.StatusCode);
+        var workQueueHtml = await workQueueResponse.Content.ReadAsStringAsync(cancellationToken);
+        Assert.Contains("Work Queue", workQueueHtml, StringComparison.Ordinal);
+        Assert.Contains("Price variance", workQueueHtml, StringComparison.Ordinal);
+        Assert.Contains(VendorBootstrapper.AtlasName, workQueueHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Other Tenant Vendor", workQueueHtml, StringComparison.Ordinal);
 
         var uploadPageResponse = await client.GetAsync("/invoices/upload", cancellationToken);
         Assert.Equal(HttpStatusCode.OK, uploadPageResponse.StatusCode);

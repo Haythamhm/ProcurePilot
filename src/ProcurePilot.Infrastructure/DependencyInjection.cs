@@ -12,6 +12,7 @@ using ProcurePilot.Application.Invoices.Upload;
 using ProcurePilot.Application.Invoices.Review;
 using ProcurePilot.Application.Matching;
 using ProcurePilot.Application.Dashboard;
+using ProcurePilot.Application.Exceptions;
 using ProcurePilot.Infrastructure.Invoices;
 using ProcurePilot.Infrastructure.Matching;
 using ProcurePilot.Infrastructure.Storage;
@@ -37,6 +38,7 @@ public static class DependencyInjection
 
         services.AddScoped<IPurchaseOrderQueries, PurchaseOrderQueries>();
         services.AddScoped<IWorkspaceDashboardQueries, WorkspaceDashboardQueries>();
+        services.AddScoped<IExceptionWorkQueueQueries, ExceptionWorkQueueQueries>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(new BlobServiceClient(invoiceBlobConnectionString));
         services.AddScoped<IInvoiceDocumentStorage, AzureBlobInvoiceDocumentStorage>();
