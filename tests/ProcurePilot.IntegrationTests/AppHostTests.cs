@@ -11,6 +11,7 @@ using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Application.Invoices.Upload;
 using ProcurePilot.Application.Invoices.Extraction;
 using ProcurePilot.Application.Invoices.Review;
+using ProcurePilot.Application.Matching;
 using ProcurePilot.Domain.Exceptions;
 using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Matching;
@@ -180,31 +181,79 @@ public sealed class AppHostTests
             1m,
             131.25m);
         bootstrapTenantContext.Invoices.Add(bootstrapInvoice);
+        var withinToleranceInvoice = new Invoice(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            atlas.Id,
+            $"INV-WITHIN-TOLERANCE-{Guid.NewGuid():N}",
+            new DateOnly(2026, 10, 5),
+            "USD",
+            127.50m);
+        var withinToleranceInvoiceLine = withinToleranceInvoice.AddLine(
+            Guid.NewGuid(),
+            1,
+            "Within tolerance invoice line",
+            1m,
+            127.50m);
+        bootstrapTenantContext.Invoices.Add(withinToleranceInvoice);
         await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
 
-        var matchResult = MatchResult.EvaluatePriceVariance(
-            Guid.NewGuid(),
-            bootstrapInvoiceLine,
-            demoLine,
-            initialMatchingRule,
-            initialMatchingRule.EffectiveFromUtc.AddMinutes(1));
-        bootstrapTenantContext.MatchResults.Add(matchResult);
-        await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
+        var matchingServices = new ServiceCollection();
+        matchingServices.AddLogging();
+        matchingServices.AddDataProtection();
+        matchingServices.AddScoped<ITenantContext>(_ => new TestTenantContext(bootstrapTenant.Id));
+        matchingServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
+        matchingServices.AddSingleton<TimeProvider>(new TestTimeProvider(
+            initialMatchingRule.EffectiveFromUtc.AddMinutes(1)));
 
-        var exceptionCase = ExceptionCase.CreateFromFailedMatch(
-            Guid.NewGuid(),
-            bootstrapInvoiceLine,
-            demoLine,
-            matchResult,
-            matchResult.EvaluatedAtUtc.AddMinutes(1));
-        exceptionCase.TransitionTo(
-            ExceptionCaseStatus.Analyzing,
-            exceptionCase.OpenedAtUtc.AddMinutes(1));
-        exceptionCase.TransitionTo(
-            ExceptionCaseStatus.Open,
-            exceptionCase.OpenedAtUtc.AddMinutes(2));
-        bootstrapTenantContext.ExceptionCases.Add(exceptionCase);
-        await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
+        PriceVarianceMatchOutcome failedOutcome;
+        PriceVarianceMatchOutcome passedOutcome;
+        await using (var matchingProvider = matchingServices.BuildServiceProvider())
+        await using (var matchingScope = matchingProvider.CreateAsyncScope())
+        {
+            var matchingService = matchingScope.ServiceProvider
+                .GetRequiredService<IPriceVarianceMatchingService>();
+            failedOutcome = await matchingService.EvaluateAsync(
+                new PriceVarianceMatchCommand(
+                    bootstrapInvoiceLine.Id,
+                    demoLine.Id,
+                    initialMatchingRule.Id),
+                cancellationToken);
+            passedOutcome = await matchingService.EvaluateAsync(
+                new PriceVarianceMatchCommand(
+                    withinToleranceInvoiceLine.Id,
+                    demoLine.Id,
+                    initialMatchingRule.Id),
+                cancellationToken);
+        }
+
+        Assert.Equal(MatchResultStatus.Failed, failedOutcome.Status);
+        Assert.Equal(MatchExceptionCode.PriceVariance, failedOutcome.ExceptionCode);
+        Assert.NotNull(failedOutcome.ExceptionCaseId);
+        Assert.Equal(MatchResultStatus.Passed, passedOutcome.Status);
+        Assert.Null(passedOutcome.ExceptionCode);
+        Assert.Null(passedOutcome.ExceptionCaseId);
+
+        var crossTenantMatchingServices = new ServiceCollection();
+        crossTenantMatchingServices.AddLogging();
+        crossTenantMatchingServices.AddDataProtection();
+        crossTenantMatchingServices.AddScoped<ITenantContext>(_ => new TestTenantContext(otherTenant.Id));
+        crossTenantMatchingServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
+        crossTenantMatchingServices.AddSingleton<TimeProvider>(new TestTimeProvider(
+            initialMatchingRule.EffectiveFromUtc.AddMinutes(1)));
+        await using (var crossTenantProvider = crossTenantMatchingServices.BuildServiceProvider())
+        await using (var crossTenantScope = crossTenantProvider.CreateAsyncScope())
+        {
+            var crossTenantMatchingService = crossTenantScope.ServiceProvider
+                .GetRequiredService<IPriceVarianceMatchingService>();
+            await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+                crossTenantMatchingService.EvaluateAsync(
+                    new PriceVarianceMatchCommand(
+                        bootstrapInvoiceLine.Id,
+                        demoLine.Id,
+                        initialMatchingRule.Id),
+                    cancellationToken));
+        }
 
         await using var invoiceReadContext = new ProcurePilotDbContext(
             options,
@@ -233,7 +282,10 @@ public sealed class AppHostTests
                 Assert.True(second.IsCurrent);
             });
 
-        var persistedMatchResult = await invoiceReadContext.MatchResults.SingleAsync(cancellationToken);
+        var persistedMatchResult = await invoiceReadContext.MatchResults
+            .SingleAsync(
+                result => result.Id == failedOutcome.MatchResultId,
+                cancellationToken);
         Assert.Equal(MatchResultStatus.Failed, persistedMatchResult.Status);
         Assert.Equal(MatchExceptionCode.PriceVariance, persistedMatchResult.ExceptionCode);
         Assert.Equal(5m, persistedMatchResult.VariancePercent);
@@ -241,14 +293,22 @@ public sealed class AppHostTests
         Assert.Equal(1, persistedMatchResult.MatchingRuleVersion);
         Assert.Equal(initialMatchingRule.Id, persistedMatchResult.MatchingRuleId);
 
-        var persistedExceptionCase = await invoiceReadContext.ExceptionCases.SingleAsync(cancellationToken);
+        var persistedExceptionCase = await invoiceReadContext.ExceptionCases
+            .SingleAsync(cancellationToken);
         Assert.Equal(bootstrapTenant.Id, persistedExceptionCase.TenantId);
         Assert.Equal(bootstrapInvoice.Id, persistedExceptionCase.InvoiceId);
         Assert.Equal(demoPurchaseOrder.Id, persistedExceptionCase.PurchaseOrderId);
-        Assert.Equal(matchResult.Id, persistedExceptionCase.MatchResultId);
+        Assert.Equal(failedOutcome.MatchResultId, persistedExceptionCase.MatchResultId);
         Assert.Equal(MatchExceptionCode.PriceVariance, persistedExceptionCase.Type);
-        Assert.Equal(ExceptionCaseStatus.Open, persistedExceptionCase.Status);
+        Assert.Equal(ExceptionCaseStatus.New, persistedExceptionCase.Status);
         Assert.Null(persistedExceptionCase.ResolvedAtUtc);
+        Assert.Equal(2, await invoiceReadContext.MatchResults.CountAsync(cancellationToken));
+        Assert.Equal(1, await invoiceReadContext.ExceptionCases.CountAsync(
+            value => value.MatchResultId == failedOutcome.MatchResultId,
+            cancellationToken));
+        Assert.False(await invoiceReadContext.ExceptionCases.AnyAsync(
+            value => value.MatchResultId == passedOutcome.MatchResultId,
+            cancellationToken));
 
         var bootstrapUser = await invoiceReadContext.Users
             .SingleAsync(user => user.Email == bootstrapEmail, cancellationToken);
@@ -630,5 +690,10 @@ public sealed class AppHostTests
 
         public Guid RequireTenantId() => TenantId
             ?? throw new InvalidOperationException("A tenant is required for this test.");
+    }
+
+    private sealed class TestTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 }

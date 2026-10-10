@@ -4,7 +4,9 @@
 
 `ExceptionCase` is a tenant-scoped workflow aggregate created from a deterministic failed `MatchResult`. It stores direct references to the related invoice, purchase order, and match result, plus the exception type and UTC lifecycle timestamps. Creation rejects passed results, mismatched evaluated lines, cross-tenant inputs, and timestamps earlier than the source evaluation.
 
-PP-17 does not create cases automatically. That orchestration belongs to PP-18. Severity, age, assignment, and queue filtering remain PP-20 scope.
+PP-18 adds the application orchestration through `IPriceVarianceMatchingService`: the service loads tenant-filtered inputs, evaluates and persists the deterministic `MatchResult`, and creates the linked `ExceptionCase` in the same database unit of work only when the result fails. A passed result persists without an exception. The unique `(TenantId, MatchResultId)` index remains the database guard against duplicate cases.
+
+Severity, age, assignment, and queue filtering remain PP-20 scope.
 
 ## Allowed transitions
 
