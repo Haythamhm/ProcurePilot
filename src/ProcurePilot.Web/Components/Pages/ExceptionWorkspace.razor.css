@@ -1,0 +1,170 @@
+.exception-breadcrumb {
+    align-items: center;
+    color: var(--pp-primary);
+    display: flex;
+    font-size: 0.8rem;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.exception-breadcrumb a {
+    font-weight: 750;
+}
+
+.exception-heading {
+    align-items: center;
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    display: flex;
+    gap: 2rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 1.4rem 1.5rem;
+}
+
+.exception-heading h1 {
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    line-height: 1.1;
+    margin: 0;
+}
+
+.page-summary {
+    color: var(--pp-primary);
+    margin: 0.55rem 0 0;
+}
+
+.exception-state {
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    max-width: 25rem;
+}
+
+.case-state,
+.case-priority {
+    border: 1px solid var(--pp-primary);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 850;
+    padding: 0.3rem 0.65rem;
+    text-transform: uppercase;
+}
+
+.priority-high,
+.priority-critical {
+    background: var(--pp-ink);
+    border-color: var(--pp-ink);
+    color: var(--pp-surface);
+}
+
+.exception-state small {
+    color: var(--pp-primary);
+    flex-basis: 100%;
+    text-align: right;
+}
+
+.case-context {
+    align-items: start;
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: minmax(12rem, 0.7fr) minmax(22rem, 1.3fr);
+    margin-top: 1rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.case-context h2 {
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.case-context dl {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.case-context dl > div {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 6rem minmax(0, 1fr);
+}
+
+.case-context dt {
+    color: var(--pp-primary);
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.case-context dd {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.case-context > p {
+    border-left: 3px solid var(--pp-primary);
+    color: var(--pp-primary);
+    font-size: 0.8rem;
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-left: 0.75rem;
+}
+
+.exception-skeleton {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.exception-skeleton div {
+    animation: exception-pulse 1.2s ease-in-out infinite alternate;
+    background: rgb(155 164 181 / 32%);
+    border-radius: 1rem;
+    min-height: 18rem;
+}
+
+.exception-skeleton div:first-of-type {
+    grid-column: 1 / -1;
+    min-height: 7rem;
+}
+
+@keyframes exception-pulse {
+    to { opacity: 0.45; }
+}
+
+@media (max-width: 800px) {
+    .exception-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .exception-state {
+        justify-content: flex-start;
+    }
+
+    .exception-state small {
+        text-align: left;
+    }
+
+    .case-context {
+        grid-template-columns: 1fr;
+    }
+
+    .exception-skeleton {
+        grid-template-columns: 1fr;
+    }
+
+    .exception-skeleton div:first-of-type {
+        grid-column: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .exception-skeleton div { animation: none; }
+}

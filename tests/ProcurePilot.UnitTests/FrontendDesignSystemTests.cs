@@ -147,6 +147,26 @@ public sealed partial class FrontendDesignSystemTests
         Assert.DoesNotContain("TODO", workQueue, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void ExceptionWorkspaceUsesAuthorizedTenantQueryAndAccessibleFacts()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var componentsRoot = Path.Combine(repositoryRoot, "src", "ProcurePilot.Web", "Components");
+        var workspace = File.ReadAllText(Path.Combine(componentsRoot, "Pages", "ExceptionWorkspace.razor"));
+        var comparison = File.ReadAllText(Path.Combine(componentsRoot, "Shared", "ExceptionComparison.razor"));
+
+        Assert.Contains("IExceptionWorkspaceQueries", workspace, StringComparison.Ordinal);
+        Assert.Contains("AuthorizationPolicies.ExceptionView", workspace, StringComparison.Ordinal);
+        Assert.Contains("aria-live=\"polite\"", workspace, StringComparison.Ordinal);
+        Assert.Contains("Exception not found", workspace, StringComparison.Ordinal);
+        Assert.Contains("read only", workspace, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<dl>", comparison, StringComparison.Ordinal);
+        Assert.Contains("Allowed tolerance", comparison, StringComparison.Ordinal);
+        Assert.Contains("Math.Abs(Model.VariancePercent)", comparison, StringComparison.Ordinal);
+        Assert.DoesNotContain("AI Analysis", workspace, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("TODO", workspace, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

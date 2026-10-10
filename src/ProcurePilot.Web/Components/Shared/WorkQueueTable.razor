@@ -27,7 +27,7 @@
                 @foreach (var exceptionCase in Items)
                 {
                     <tr>
-                        <th scope="row"><span class="case-reference">@CaseReference(exceptionCase.Id)</span></th>
+                        <th scope="row"><a class="case-reference" href="/exceptions/@exceptionCase.Id">@CaseReference(exceptionCase.Id)</a></th>
                         <td><strong>@exceptionCase.VendorName</strong></td>
                         <td>@TypeLabel(exceptionCase.Type)</td>
                         <td><span class="case-status"><span aria-hidden="true"></span>@StatusLabel(exceptionCase.Status)</span></td>

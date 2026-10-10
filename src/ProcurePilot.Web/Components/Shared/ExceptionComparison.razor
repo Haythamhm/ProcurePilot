@@ -1,0 +1,74 @@
+@using System.Globalization
+@using ProcurePilot.Application.Exceptions
+
+<section class="comparison-grid" aria-labelledby="comparison-title">
+    <h2 id="comparison-title" class="visually-hidden">Invoice and purchase order comparison</h2>
+
+    <article class="comparison-panel" aria-labelledby="invoice-panel-title">
+        <p class="comparison-label">Invoice fact</p>
+        <h3 id="invoice-panel-title">Invoice @Model.InvoiceNumber</h3>
+        <p class="comparison-vendor">@Model.VendorName</p>
+        <dl>
+            <div><dt>Line</dt><dd>@Model.InvoiceLineNumber</dd></div>
+            <div><dt>Description</dt><dd>@Model.InvoiceLineDescription</dd></div>
+            <div><dt>Quantity</dt><dd>@Quantity(Model.InvoiceQuantity)</dd></div>
+            <div><dt>Unit price</dt><dd>@Money(Model.InvoiceUnitPrice, Model.InvoiceCurrency)</dd></div>
+            <div class="comparison-total"><dt>Line amount</dt><dd>@Money(Model.InvoiceQuantity * Model.InvoiceUnitPrice, Model.InvoiceCurrency)</dd></div>
+        </dl>
+        <p class="comparison-source">
+            Source: @(Model.InvoiceSourceFileName ?? "uploaded invoice") · line @Model.InvoiceLineNumber
+        </p>
+    </article>
+
+    <article class="comparison-panel comparison-panel--variance" aria-labelledby="variance-panel-title">
+        <p class="comparison-label">Deterministic match</p>
+        <h3 id="variance-panel-title">Detected mismatch</h3>
+        <p class="variance-amount">@SignedMoney(UnitDifference, Model.InvoiceCurrency) per unit</p>
+        <dl>
+            <div><dt>Variance</dt><dd>@SignedPercent(Model.VariancePercent)</dd></div>
+            <div><dt>Allowed tolerance</dt><dd>±@Percent(Model.AllowedTolerancePercent)</dd></div>
+        </dl>
+        <p class="variance-rule">
+            <strong>@Percent(Math.Abs(Model.VariancePercent)) &gt; @Percent(Model.AllowedTolerancePercent)</strong>
+            <span aria-hidden="true">→</span> exception
+        </p>
+        <p class="comparison-source">Rule: @RuleReference · evaluated @Model.EvaluatedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</p>
+    </article>
+
+    <article class="comparison-panel" aria-labelledby="po-panel-title">
+        <p class="comparison-label">Purchase order fact</p>
+        <h3 id="po-panel-title">Purchase order @Model.PurchaseOrderNumber</h3>
+        <p class="comparison-vendor">@Model.VendorName</p>
+        <dl>
+            <div><dt>Line</dt><dd>@Model.PurchaseOrderLineNumber</dd></div>
+            <div><dt>Description</dt><dd>@Model.PurchaseOrderLineDescription</dd></div>
+            <div><dt>Quantity</dt><dd>@Quantity(Model.PurchaseOrderQuantity)</dd></div>
+            <div><dt>Unit price</dt><dd>@Money(Model.PurchaseOrderUnitPrice, Model.PurchaseOrderCurrency)</dd></div>
+            <div class="comparison-total"><dt>Line amount</dt><dd>@Money(Model.PurchaseOrderQuantity * Model.PurchaseOrderUnitPrice, Model.PurchaseOrderCurrency)</dd></div>
+        </dl>
+        <p class="comparison-source">Source: purchase order line @Model.PurchaseOrderLineNumber</p>
+    </article>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required ExceptionWorkspaceReadModel Model { get; set; }
+
+    private decimal UnitDifference => Model.InvoiceUnitPrice - Model.PurchaseOrderUnitPrice;
+    private string RuleReference => $"{ToKebabLabel(Model.MatchingRuleType).ToUpperInvariant()} · V{Model.MatchingRuleVersion}";
+
+    private static string Money(decimal value, string currency) =>
+        $"{currency} {value.ToString("N2", CultureInfo.CurrentCulture)}";
+
+    private static string SignedMoney(decimal value, string currency) =>
+        $"{(value > 0 ? "+" : string.Empty)}{Money(value, currency)}";
+
+    private static string Quantity(decimal value) => value.ToString("0.####", CultureInfo.CurrentCulture);
+    private static string Percent(decimal value) => $"{value.ToString("0.####", CultureInfo.CurrentCulture)}%";
+    private static string SignedPercent(decimal value) => $"{(value > 0 ? "+" : string.Empty)}{Percent(value)}";
+
+    private static string ToKebabLabel(string value) => string.Concat(
+        value.Select((character, index) => index > 0 && char.IsUpper(character)
+            ? $"-{character}"
+            : character.ToString()));
+}

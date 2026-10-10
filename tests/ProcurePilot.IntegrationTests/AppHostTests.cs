@@ -350,6 +350,26 @@ public sealed class AppHostTests
                     bootstrapUser.Id,
                     cancellationToken);
             Assert.Equal(queueItem, Assert.Single(assignedQueue));
+
+            var workspace = await queueScope.ServiceProvider
+                .GetRequiredService<IExceptionWorkspaceQueries>()
+                .GetAsync(persistedExceptionCase.Id, cancellationToken);
+            Assert.NotNull(workspace);
+            Assert.Equal(persistedExceptionCase.Id, workspace.Id);
+            Assert.Equal(VendorBootstrapper.AtlasName, workspace.VendorName);
+            Assert.Equal(bootstrapInvoice.InvoiceNumber, workspace.InvoiceNumber);
+            Assert.Equal(bootstrapInvoiceLine.LineNumber, workspace.InvoiceLineNumber);
+            Assert.Equal(bootstrapInvoiceLine.Quantity, workspace.InvoiceQuantity);
+            Assert.Equal(131.25m, workspace.InvoiceUnitPrice);
+            Assert.Equal(demoPurchaseOrder.Number, workspace.PurchaseOrderNumber);
+            Assert.Equal(demoLine.LineNumber, workspace.PurchaseOrderLineNumber);
+            Assert.Equal(demoLine.Quantity, workspace.PurchaseOrderQuantity);
+            Assert.Equal(125m, workspace.PurchaseOrderUnitPrice);
+            Assert.Equal(5m, workspace.VariancePercent);
+            Assert.Equal(3m, workspace.AllowedTolerancePercent);
+            Assert.Equal(nameof(MatchingRuleType.PriceVariance), workspace.MatchingRuleType);
+            Assert.Equal(initialMatchingRule.Version, workspace.MatchingRuleVersion);
+            Assert.Equal(bootstrapUser.DisplayName, workspace.AssignedToDisplayName);
         }
 
         persistedExceptionCase.TransitionTo(
@@ -384,6 +404,11 @@ public sealed class AppHostTests
                 .GetRequiredService<IExceptionWorkQueueQueries>()
                 .ListAsync(ExceptionWorkQueueFilter.Open, cancellationToken: cancellationToken);
             Assert.Empty(otherTenantQueue);
+
+            var crossTenantWorkspace = await otherQueueScope.ServiceProvider
+                .GetRequiredService<IExceptionWorkspaceQueries>()
+                .GetAsync(persistedExceptionCase.Id, cancellationToken);
+            Assert.Null(crossTenantWorkspace);
         }
         var uploadServices = new ServiceCollection();
         uploadServices.AddLogging();

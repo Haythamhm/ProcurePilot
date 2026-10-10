@@ -68,6 +68,8 @@
     font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
     font-size: 0.82rem;
     letter-spacing: 0.03em;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25rem;
 }
 
 .case-status,
