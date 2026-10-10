@@ -1,0 +1,123 @@
+.comparison-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 1.12fr) minmax(0, 1fr);
+}
+
+.comparison-panel {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 1.25rem;
+}
+
+.comparison-panel--variance {
+    background: rgb(155 164 181 / 18%);
+    border-color: var(--pp-primary);
+}
+
+.comparison-label {
+    color: var(--pp-primary);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin: 0 0 0.45rem;
+    text-transform: uppercase;
+}
+
+.comparison-panel h3 {
+    font-size: 1.05rem;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.comparison-vendor {
+    color: var(--pp-primary);
+    font-size: 0.85rem;
+    margin: 0.3rem 0 1.1rem;
+}
+
+.comparison-panel dl {
+    display: grid;
+    gap: 0.65rem;
+    margin: 1rem 0;
+}
+
+.comparison-panel dl > div {
+    align-items: baseline;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(6rem, 0.65fr) minmax(0, 1.35fr);
+}
+
+.comparison-panel dt {
+    color: var(--pp-primary);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.comparison-panel dd {
+    font-size: 0.87rem;
+    font-weight: 700;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.comparison-total {
+    border-top: 1px solid var(--pp-muted);
+    padding-top: 0.75rem;
+}
+
+.comparison-total dd {
+    font-size: 1rem;
+}
+
+.comparison-source {
+    color: var(--pp-primary);
+    font-size: 0.72rem;
+    margin: auto 0 0;
+    padding-top: 0.75rem;
+}
+
+.variance-amount {
+    color: var(--pp-ink);
+    font-size: 1.45rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 850;
+    line-height: 1.15;
+    margin: 1rem 0 0.25rem;
+}
+
+.variance-rule {
+    align-items: center;
+    border-top: 1px solid var(--pp-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0.35rem 0 0;
+    padding-top: 0.9rem;
+}
+
+@media (max-width: 1100px) {
+    .comparison-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .comparison-panel--variance {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+}
+
+@media (max-width: 700px) {
+    .comparison-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .comparison-panel--variance {
+        grid-column: auto;
+    }
+}

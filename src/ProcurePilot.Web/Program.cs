@@ -80,7 +80,13 @@ builder.Services.AddAuthorizationBuilder()
         policy => policy
             .RequireAuthenticatedUser()
             .AddRequirements(new ActiveTenantRequirement())
-            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.InvoiceReview));
+            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.InvoiceReview))
+    .AddPolicy(
+        AuthorizationPolicies.ExceptionView,
+        policy => policy
+            .RequireAuthenticatedUser()
+            .AddRequirements(new ActiveTenantRequirement())
+            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.ExceptionView));
 builder.Services.AddScoped<IAuthorizationHandler, ActiveTenantAuthorizationHandler>();
 builder.Services.Configure<IdentityBootstrapOptions>(
     builder.Configuration.GetSection(IdentityBootstrapOptions.SectionName));

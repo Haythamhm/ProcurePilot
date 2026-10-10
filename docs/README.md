@@ -10,6 +10,7 @@ This directory contains versioned technical documentation. Product requirements,
 - [AI evaluations](ai-evals/README.md) — versioned evaluation cases and promotion evidence for AI capabilities once they enter scope.
 - [Runbooks](runbooks/README.md) — operational procedures that can be executed and verified.
 - [Frontend design system](ui/design-system.md) — palette, typography, icons, accessibility, and responsive rules for implemented UI surfaces.
+- [Exception Workspace](ui/exception-workspace.md) — tenant-scoped comparison of invoice, deterministic mismatch, and purchase-order facts.
 - [Invoice domain](architecture/invoice-domain.md) — tenant-scoped Invoice aggregate and persistence baseline.
 - [Contribution rules](../CONTRIBUTING.md) — task workflow, coding conventions, tests, migrations, and security rules.
 

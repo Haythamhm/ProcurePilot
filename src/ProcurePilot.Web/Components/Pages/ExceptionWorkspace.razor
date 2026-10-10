@@ -1,0 +1,131 @@
+@page "/exceptions/{ExceptionCaseId:guid}"
+@using ProcurePilot.Application.Exceptions
+@inject IExceptionWorkspaceQueries WorkspaceQueries
+@inject TimeProvider TimeProvider
+@inject ILogger<ExceptionWorkspace> Logger
+
+@attribute [Authorize(Policy = AuthorizationPolicies.ExceptionView)]
+
+<PageTitle>@PageTitleText</PageTitle>
+
+@if (_isLoading)
+{
+    <section class="exception-skeleton" role="status" aria-live="polite" aria-busy="true">
+        <span class="visually-hidden">Loading exception workspace</span>
+        <div></div><div></div><div></div><div></div>
+    </section>
+}
+else if (_loadFailed)
+{
+    <SystemState Eyebrow="Exception workspace"
+                 Marker="!"
+                 Title="The exception could not be loaded"
+                 Description="The read-only case context is temporarily unavailable. No financial data was changed.">
+        <Actions><a class="btn btn-outline-secondary" href="@CurrentUrl">Try again</a></Actions>
+    </SystemState>
+}
+else if (_workspace is null)
+{
+    <SystemState Eyebrow="Exception workspace"
+                 Marker="404"
+                 Title="Exception not found"
+                 Description="This case does not exist or is not available in your active tenant.">
+        <Actions><a class="btn btn-outline-secondary" href="/work-queue">Return to work queue</a></Actions>
+    </SystemState>
+}
+else
+{
+    <nav class="exception-breadcrumb" aria-label="Breadcrumb">
+        <a href="/work-queue">Work queue</a><span aria-hidden="true">/</span><span aria-current="page">@CaseReference</span>
+    </nav>
+
+    <header class="exception-heading">
+        <div>
+            <p class="eyebrow">Exception workspace · read only</p>
+            <h1>@CaseReference · @TypeLabel(_workspace.Type)</h1>
+            <p class="page-summary">@_workspace.VendorName · @_workspace.InvoiceNumber · @_workspace.PurchaseOrderNumber</p>
+        </div>
+        <div class="exception-state" aria-label="Case state and priority">
+            <span class="case-state">@StatusLabel(_workspace.Status)</span>
+            <span class="case-priority priority-@_workspace.Severity.ToLowerInvariant()">@_workspace.Severity priority</span>
+            <small>@AgeLabel</small>
+        </div>
+    </header>
+
+    <ExceptionComparison Model="_workspace" />
+
+    <section class="case-context" aria-labelledby="case-context-title">
+        <div>
+            <p class="card-kicker">Case context</p>
+            <h2 id="case-context-title">Operational facts</h2>
+        </div>
+        <dl>
+            <div><dt>Owner</dt><dd>@(_workspace.AssignedToDisplayName ?? "Unassigned")</dd></div>
+            <div><dt>Opened</dt><dd><time datetime="@_workspace.OpenedAtUtc.ToString("O")">@_workspace.OpenedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</time></dd></div>
+            <div><dt>Resolution</dt><dd>@ResolutionLabel</dd></div>
+        </dl>
+        <p>No automated approval or financial decision is available in this read-only view.</p>
+    </section>
+}
+
+@code {
+    private ExceptionWorkspaceReadModel? _workspace;
+    private bool _isLoading = true;
+    private bool _loadFailed;
+
+    [Parameter]
+    public Guid ExceptionCaseId { get; set; }
+
+    private string CurrentUrl => $"/exceptions/{ExceptionCaseId}";
+    private string PageTitleText => _workspace is null ? "Exception | ProcurePilot" : $"{CaseReference} | ProcurePilot";
+    private string CaseReference => $"EXC-{ExceptionCaseId:N}"[..12].ToUpperInvariant();
+    private string ResolutionLabel => _workspace?.ResolvedAtUtc is { } resolvedAt
+        ? $"Resolved {resolvedAt.ToLocalTime():dd MMM yyyy · HH:mm}"
+        : "Not resolved";
+
+    private string AgeLabel
+    {
+        get
+        {
+            var age = TimeProvider.GetUtcNow() - _workspace!.OpenedAtUtc;
+            if (age < TimeSpan.Zero)
+            {
+                age = TimeSpan.Zero;
+            }
+
+            return age.TotalDays >= 1
+                ? $"Open for {(int)age.TotalDays} day{(age.TotalDays >= 2 ? "s" : string.Empty)}"
+                : age.TotalHours >= 1
+                    ? $"Open for {(int)age.TotalHours} hour{(age.TotalHours >= 2 ? "s" : string.Empty)}"
+                    : "Opened less than one hour ago";
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _loadFailed = false;
+        try
+        {
+            _workspace = await WorkspaceQueries.GetAsync(ExceptionCaseId);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load exception workspace {ExceptionCaseId}.", ExceptionCaseId);
+            _workspace = null;
+            _loadFailed = true;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string TypeLabel(string value) => value is "PriceVariance" ? "Price variance" : value;
+    private static string StatusLabel(string value) => value switch
+    {
+        "WaitingAction" => "Waiting for action",
+        "WaitingExternal" => "Waiting externally",
+        _ => value
+    };
+}

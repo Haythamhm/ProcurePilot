@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IPurchaseOrderQueries, PurchaseOrderQueries>();
         services.AddScoped<IWorkspaceDashboardQueries, WorkspaceDashboardQueries>();
         services.AddScoped<IExceptionWorkQueueQueries, ExceptionWorkQueueQueries>();
+        services.AddScoped<IExceptionWorkspaceQueries, ExceptionWorkspaceQueries>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(new BlobServiceClient(invoiceBlobConnectionString));
         services.AddScoped<IInvoiceDocumentStorage, AzureBlobInvoiceDocumentStorage>();
