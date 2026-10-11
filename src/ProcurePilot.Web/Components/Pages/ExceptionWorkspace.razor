@@ -1,6 +1,7 @@
 @page "/exceptions/{ExceptionCaseId:guid}"
 @using ProcurePilot.Application.Exceptions
 @inject IExceptionWorkspaceQueries WorkspaceQueries
+@inject IExceptionOverrideService OverrideService
 @inject TimeProvider TimeProvider
 @inject ILogger<ExceptionWorkspace> Logger
 
@@ -43,7 +44,7 @@ else
 
     <header class="exception-heading">
         <div>
-            <p class="eyebrow">Exception workspace · read only</p>
+            <p class="eyebrow">Exception workspace · controlled resolution</p>
             <h1>@CaseReference · @TypeLabel(_workspace.Type)</h1>
             <p class="page-summary">@_workspace.VendorName · @_workspace.InvoiceNumber · @_workspace.PurchaseOrderNumber</p>
         </div>
@@ -103,14 +104,55 @@ else
             <div><dt>Opened</dt><dd><time datetime="@_workspace.OpenedAtUtc.ToString("O")">@_workspace.OpenedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</time></dd></div>
             <div><dt>Resolution</dt><dd>@ResolutionLabel</dd></div>
         </dl>
-        <p>No automated approval or financial decision is available in this read-only view.</p>
+        <p>No automated approval or financial decision is available. Every override requires explicit permission, a human reason and an audit record.</p>
     </section>
+
+    <AuthorizeView Policy="@AuthorizationPolicies.ExceptionOverride">
+        <Authorized Context="overrideAuthorization">
+            @if (CanOverride)
+            {
+                <section class="override-panel" aria-labelledby="override-title">
+                    <div class="override-copy">
+                        <p class="card-kicker">Controlled action</p>
+                        <h2 id="override-title">Resolve with an override</h2>
+                        <p>Use this only after reviewing the source evidence. Your reason and the state change will be recorded.</p>
+                    </div>
+                    <EditForm Model="_overrideInput" OnSubmit="SubmitOverrideAsync" FormName="exception-override">
+                        <label for="override-reason">Override reason</label>
+                        <InputTextArea id="override-reason"
+                                       @bind-Value="_overrideInput.Reason"
+                                       maxlength="1000"
+                                       disabled="@_isSubmittingOverride"
+                                       aria-describedby="override-guidance" />
+                        <div class="override-footer">
+                            <small id="override-guidance">Required · maximum 1,000 characters</small>
+                            <button class="btn btn-primary"
+                                    type="submit"
+                                    disabled="@_isSubmittingOverride">
+                                @(_isSubmittingOverride ? "Recording override…" : "Confirm override")
+                            </button>
+                        </div>
+                    </EditForm>
+                    @if (!string.IsNullOrWhiteSpace(_overrideMessage))
+                    {
+                        <p class="override-message @(_overrideSucceeded ? "success" : "error")"
+                           role="@(_overrideSucceeded ? "status" : "alert")"
+                           aria-live="polite">@_overrideMessage</p>
+                    }
+                </section>
+            }
+        </Authorized>
+    </AuthorizeView>
 }
 
 @code {
     private ExceptionWorkspaceReadModel? _workspace;
     private bool _isLoading = true;
     private bool _loadFailed;
+    private bool _isSubmittingOverride;
+    private bool _overrideSucceeded;
+    private string? _overrideMessage;
+    private readonly OverrideInput _overrideInput = new();
 
     [Parameter]
     public Guid ExceptionCaseId { get; set; }
@@ -121,6 +163,7 @@ else
     private string ResolutionLabel => _workspace?.ResolvedAtUtc is { } resolvedAt
         ? $"Resolved {resolvedAt.ToLocalTime():dd MMM yyyy · HH:mm}"
         : "Not resolved";
+    private bool CanOverride => _workspace?.Status is "Open" or "WaitingAction" or "WaitingExternal";
 
     private string AgeLabel
     {
@@ -160,6 +203,48 @@ else
         }
     }
 
+    private async Task SubmitOverrideAsync()
+    {
+        if (_workspace is null || _isSubmittingOverride)
+        {
+            return;
+        }
+
+        _isSubmittingOverride = true;
+        _overrideMessage = null;
+        _overrideSucceeded = false;
+        try
+        {
+            var result = await OverrideService.OverrideAsync(
+                new ExceptionOverrideCommand(_workspace.Id, _overrideInput.Reason));
+
+            _overrideMessage = result.Outcome switch
+            {
+                ExceptionOverrideOutcome.Succeeded => "Override recorded. The exception is now resolved and auditable.",
+                ExceptionOverrideOutcome.InvalidReason => "Enter a reason between 1 and 1,000 characters.",
+                ExceptionOverrideOutcome.InvalidState => "This exception can no longer be overridden in its current state.",
+                ExceptionOverrideOutcome.Forbidden => "You do not have permission to override this exception.",
+                _ => "This exception is no longer available in your active tenant."
+            };
+            _overrideSucceeded = result.Outcome is ExceptionOverrideOutcome.Succeeded;
+
+            if (_overrideSucceeded)
+            {
+                _overrideInput.Reason = string.Empty;
+                _workspace = await WorkspaceQueries.GetAsync(ExceptionCaseId);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to override exception {ExceptionCaseId}.", ExceptionCaseId);
+            _overrideMessage = "The override could not be recorded. No partial change was accepted.";
+        }
+        finally
+        {
+            _isSubmittingOverride = false;
+        }
+    }
+
     private static string TypeLabel(string value) => value is "PriceVariance" ? "Price variance" : value;
     private static string StatusLabel(string value) => value switch
     {
@@ -167,4 +252,9 @@ else
         "WaitingExternal" => "Waiting externally",
         _ => value
     };
+
+    private sealed class OverrideInput
+    {
+        public string Reason { get; set; } = string.Empty;
+    }
 }

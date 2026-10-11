@@ -19,6 +19,7 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantContext, ClaimsTenantContext>();
+builder.Services.AddScoped<ICurrentUserContext, ClaimsCurrentUserContext>();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddRazorPages();
@@ -88,7 +89,13 @@ builder.Services.AddAuthorizationBuilder()
         policy => policy
             .RequireAuthenticatedUser()
             .AddRequirements(new ActiveTenantRequirement())
-            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.ExceptionView));
+            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.ExceptionView))
+    .AddPolicy(
+        AuthorizationPolicies.ExceptionOverride,
+        policy => policy
+            .RequireAuthenticatedUser()
+            .AddRequirements(new ActiveTenantRequirement())
+            .RequireClaim(ProcurePilotPermissions.ClaimType, ProcurePilotPermissions.ExceptionOverride));
 builder.Services.AddScoped<IAuthorizationHandler, ActiveTenantAuthorizationHandler>();
 builder.Services.Configure<IdentityBootstrapOptions>(
     builder.Configuration.GetSection(IdentityBootstrapOptions.SectionName));

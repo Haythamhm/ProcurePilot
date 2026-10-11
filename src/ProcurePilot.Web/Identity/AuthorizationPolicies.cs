@@ -8,4 +8,6 @@ public static class AuthorizationPolicies
     public const string InvoiceReview = "InvoiceReview";
 
     public const string ExceptionView = "ExceptionView";
+
+    public const string ExceptionOverride = "ExceptionOverride";
 }
