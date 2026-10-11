@@ -1059,7 +1059,7 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId", "ExceptionCaseId")
                         .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -1158,7 +1158,7 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .WithOne()
                         .HasForeignKey("ProcurePilot.Domain.Exceptions.Resolution", "TenantId", "ExceptionCaseId")
                         .HasPrincipalKey("ProcurePilot.Domain.Exceptions.ExceptionCase", "TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

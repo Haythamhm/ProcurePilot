@@ -24,3 +24,4 @@ Implemented architecture notes:
 - [AI exception explanation](ai-exception-explanation.md) — versioned prompt and structured explanation service for price-variance exceptions.
 - [AI analysis persistence and observability](ai-analysis-persistence.md) — relational persistence and OpenTelemetry execution telemetry for AI analyses.
 - [Authorized exception override](exception-override.md) — permission-guarded human override with atomic resolution and audit persistence.
+- [Resolution and audit retention](resolution-audit-retention.md) — append-only application guard and database retention constraints for sensitive decision records.

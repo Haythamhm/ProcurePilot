@@ -26,4 +26,4 @@ EF Core persists all three changes in one SaveChangesAsync call. Composite tenan
 
 ## PP-29 boundary
 
-PP-29 will add non-override resolution types and generalized audit behavior. It must reuse the entities and transaction principles introduced here rather than create a parallel resolution model.
+PP-29 makes persisted Resolution and AuditEvent records immutable through the normal EF Core application path and changes their case foreign keys from cascade to restrict. It reuses the entities and transaction principles introduced here rather than creating a parallel resolution model. New resolution types remain out of scope until their business semantics and authorization rules are specified.

@@ -589,7 +589,7 @@ public sealed class ProcurePilotDbContext(
                 .WithOne()
                 .HasForeignKey<Resolution>(value => new { value.TenantId, value.ExceptionCaseId })
                 .HasPrincipalKey<ExceptionCase>(value => new { value.TenantId, value.Id })
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
             resolution.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, UserId = value.ActorUserId })
@@ -643,7 +643,7 @@ public sealed class ProcurePilotDbContext(
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.ExceptionCaseId })
                 .HasPrincipalKey(value => new { value.TenantId, value.Id })
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
             auditEvent.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, UserId = value.ActorUserId })
@@ -725,7 +725,7 @@ public sealed class ProcurePilotDbContext(
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
-        ValidateTenantWrites();
+        ValidateWrites();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
@@ -733,8 +733,15 @@ public sealed class ProcurePilotDbContext(
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
     {
-        ValidateTenantWrites();
+        ValidateWrites();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void ValidateWrites()
+    {
+        ValidateTenantWrites();
+        RejectChangesToPersistedRecords<Resolution>();
+        RejectChangesToPersistedRecords<AuditEvent>();
     }
 
     private void ValidateTenantWrites()
@@ -749,6 +756,17 @@ public sealed class ProcurePilotDbContext(
             {
                 throw new InvalidOperationException("Cross-tenant writes are not allowed.");
             }
+        }
+    }
+
+    private void RejectChangesToPersistedRecords<TEntity>()
+        where TEntity : class
+    {
+        if (ChangeTracker.Entries<TEntity>()
+            .Any(entry => entry.State is EntityState.Modified or EntityState.Deleted))
+        {
+            throw new InvalidOperationException(
+                $"{typeof(TEntity).Name} records are immutable once persisted.");
         }
     }
 
