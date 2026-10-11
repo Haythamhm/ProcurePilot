@@ -142,6 +142,15 @@
         "resolved": "10.5.2",
         "contentHash": "Ei+YWV9Ybnps7pR1dgjlG29gelXEwZkhLVAcWmKe6HvXS6LNBYgSdWiY3Hk9OZXYtK34rv/NtLWBQYQGOBQYPQ=="
       },
+      "Microsoft.Extensions.AI.OpenAI": {
+        "type": "Transitive",
+        "resolved": "10.5.2",
+        "contentHash": "0LEhySZtEs/PlL6O4dDY2Oz2TNGFU7V2U55j+e+YxjOfXx/N1rKJ6fqrx+C/Z44XuKbPHRQw5yTQOF5IVfuV7g==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.5.2",
+          "OpenAI": "2.10.0"
+        }
+      },
       "Microsoft.Extensions.AmbientMetadata.Application": {
         "type": "Transitive",
         "resolved": "10.8.0",
@@ -515,6 +524,14 @@
           "Npgsql": "10.0.3"
         }
       },
+      "OpenAI": {
+        "type": "Transitive",
+        "resolved": "2.10.0",
+        "contentHash": "e5gAhMDcX5bFmmtR+lT6qZxJoaGb0SkIplPUUdKwcC4xerCh471hTIsrvfkou7scfZD9YQk6C06dP3NwBqHw1A==",
+        "dependencies": {
+          "System.ClientModel": "1.10.0"
+        }
+      },
       "OpenTelemetry": {
         "type": "Transitive",
         "resolved": "1.15.3",
@@ -712,6 +729,7 @@
       "procurepilot.web": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Extensions.AI.OpenAI": "[10.5.2, )",
           "ProcurePilot.Application": "[1.0.0, )",
           "ProcurePilot.Infrastructure": "[1.0.0, )",
           "ProcurePilot.ServiceDefaults": "[1.0.0, )"

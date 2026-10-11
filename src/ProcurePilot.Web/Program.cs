@@ -10,6 +10,7 @@ using ProcurePilot.Infrastructure.Persistence;
 using ProcurePilot.Web.Components;
 using ProcurePilot.Web.DemoData;
 using ProcurePilot.Web.Identity;
+using ProcurePilot.Web.AI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddRazorPages();
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddProcurePilotAiChat(builder.Configuration);
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("procurepilot")
         ?? throw new InvalidOperationException("Connection string 'procurepilot' is required."),
