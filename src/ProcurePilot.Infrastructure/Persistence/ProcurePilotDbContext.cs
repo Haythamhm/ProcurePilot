@@ -43,6 +43,8 @@ public sealed class ProcurePilotDbContext(
 
     public DbSet<ExceptionCase> ExceptionCases => Set<ExceptionCase>();
 
+    public DbSet<ExceptionCaseEvidence> ExceptionCaseEvidences => Set<ExceptionCaseEvidence>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -467,6 +469,78 @@ public sealed class ProcurePilotDbContext(
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, UserId = value.AssignedToUserId })
                 .HasPrincipalKey(value => new { value.TenantId, UserId = value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            exceptionCase.Navigation(value => value.Evidences).UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<ExceptionCaseEvidence>(evidence =>
+        {
+            evidence.ToTable("ExceptionCaseEvidences", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_ExceptionCaseEvidences_Type",
+                    "\"Type\" IN ('InvoicePrice', 'PurchaseOrderPrice', 'PriceVariance', 'RuleTolerance')");
+                table.HasCheckConstraint(
+                    "CK_ExceptionCaseEvidences_TypedReference",
+                    "(\"Type\" = 'InvoicePrice' AND \"InvoiceLineId\" IS NOT NULL AND \"PurchaseOrderLineId\" IS NULL AND \"MatchResultId\" IS NULL AND \"MatchingRuleId\" IS NULL) OR " +
+                    "(\"Type\" = 'PurchaseOrderPrice' AND \"PurchaseOrderLineId\" IS NOT NULL AND \"InvoiceLineId\" IS NULL AND \"MatchResultId\" IS NULL AND \"MatchingRuleId\" IS NULL) OR " +
+                    "(\"Type\" = 'PriceVariance' AND \"MatchResultId\" IS NOT NULL AND \"InvoiceLineId\" IS NULL AND \"PurchaseOrderLineId\" IS NULL AND \"MatchingRuleId\" IS NULL) OR " +
+                    "(\"Type\" = 'RuleTolerance' AND \"MatchingRuleId\" IS NOT NULL AND \"InvoiceLineId\" IS NULL AND \"PurchaseOrderLineId\" IS NULL AND \"MatchResultId\" IS NULL)");
+            });
+            evidence.HasKey(value => value.Id);
+            evidence.HasAlternateKey(value => new { value.TenantId, value.Id });
+            evidence.Property(value => value.TenantId).IsRequired();
+            evidence.Property(value => value.ExceptionCaseId).IsRequired();
+            evidence.Property(value => value.Type)
+                .HasConversion<string>()
+                .HasMaxLength(ExceptionCaseEvidence.TypeMaxLength)
+                .IsRequired();
+            evidence.Property(value => value.InvoiceLineId);
+            evidence.Property(value => value.PurchaseOrderLineId);
+            evidence.Property(value => value.MatchResultId);
+            evidence.Property(value => value.MatchingRuleId);
+            evidence.Property(value => value.RecordedAtUtc).IsRequired();
+
+            evidence.HasIndex(value => new { value.TenantId, value.ExceptionCaseId, value.Type })
+                .IsUnique();
+            evidence.HasIndex(value => new { value.TenantId, value.InvoiceLineId });
+            evidence.HasIndex(value => new { value.TenantId, value.PurchaseOrderLineId });
+            evidence.HasIndex(value => new { value.TenantId, value.MatchResultId });
+            evidence.HasIndex(value => new { value.TenantId, value.MatchingRuleId });
+
+            evidence.HasOne<ExceptionCase>()
+                .WithMany(caseEntity => caseEntity.Evidences)
+                .HasForeignKey(value => new { value.TenantId, value.ExceptionCaseId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+
+            evidence.HasOne<InvoiceLine>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.InvoiceLineId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            evidence.HasOne<PurchaseOrderLine>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.PurchaseOrderLineId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            evidence.HasOne<MatchResult>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.MatchResultId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            evidence.HasOne<MatchingRule>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.MatchingRuleId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            evidence.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(value => value.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

@@ -61,3 +61,18 @@ The card, grid, and responsive panel composition was informed by the public Radz
 - The 404 and application-error pages always provide a clear route back to the authenticated workspace.
 - Technical exception details are not rendered; the support-safe request reference is preserved when available.
 - The reconnection dialog announces state changes, labels its controls, preserves a 44-pixel minimum target, and respects reduced-motion preferences.
+- Tenant-scoped read loaders use the shared `deferred-loading` behavior: the request starts immediately, while visual feedback is revealed only after 180 ms. This removes short navigation flashes without delaying data or hiding sustained loading.
+- Critical read errors use an assertive live region and provide a safe retry or an explicit navigation action. Error copy never exposes exception details or implies that financial data changed.
+
+### P0 state coverage
+
+| Surface | Loading | Empty / success | Error / recovery |
+| --- | --- | --- | --- |
+| Dashboard | Deferred activity loader | Empty recent activity and populated metrics | Tenant-safe error with retry |
+| Work Queue | Deferred queue loader | Empty per selected view and populated table | Tenant-safe error with view-preserving retry |
+| Purchase Orders | Deferred reference loader | Empty tenant reference and populated tables | Tenant-safe error with retry |
+| Invoice upload | Upload-in-progress control state | Queued-for-processing success | Validation or recoverable upload error; resubmission remains available |
+| Extraction review | Deferred review loader | Not found, confirmed, low-confidence review and editable review | Tenant-safe load error with retry and dashboard fallback; save error remains attached to the form |
+| Exception Workspace | Deferred skeleton | Not found, missing evidence, open and resolved case | Tenant-safe read error with case-preserving retry |
+
+AI analyzing/unavailable states belong to PP-24–PP-27. Override, resolution, permission-denied and audit timeline states belong to PP-28–PP-30; PP-23 does not fabricate inactive controls for those future slices.

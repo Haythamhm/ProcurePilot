@@ -83,6 +83,10 @@ public sealed class ExceptionCase : ITenantScopedEntity
 
     public DateTimeOffset? ResolvedAtUtc { get; private set; }
 
+    private readonly List<ExceptionCaseEvidence> _evidences = [];
+
+    public IReadOnlyCollection<ExceptionCaseEvidence> Evidences => _evidences.AsReadOnly();
+
     public static ExceptionCase CreateFromFailedMatch(
         Guid id,
         InvoiceLine invoiceLine,
@@ -134,7 +138,7 @@ public sealed class ExceptionCase : ITenantScopedEntity
                 "An exception case cannot open before its match result was evaluated.");
         }
 
-        return new ExceptionCase(
+        var exceptionCase = new ExceptionCase(
             id,
             matchResult.TenantId,
             invoiceLine.InvoiceId,
@@ -143,6 +147,36 @@ public sealed class ExceptionCase : ITenantScopedEntity
             matchResult.ExceptionCode.Value,
             severity,
             openedAt);
+
+        exceptionCase._evidences.Add(ExceptionCaseEvidence.CreateInvoicePrice(
+            Guid.NewGuid(),
+            matchResult.TenantId,
+            id,
+            invoiceLine.Id,
+            openedAt));
+
+        exceptionCase._evidences.Add(ExceptionCaseEvidence.CreatePurchaseOrderPrice(
+            Guid.NewGuid(),
+            matchResult.TenantId,
+            id,
+            purchaseOrderLine.Id,
+            openedAt));
+
+        exceptionCase._evidences.Add(ExceptionCaseEvidence.CreatePriceVariance(
+            Guid.NewGuid(),
+            matchResult.TenantId,
+            id,
+            matchResult.Id,
+            openedAt));
+
+        exceptionCase._evidences.Add(ExceptionCaseEvidence.CreateRuleTolerance(
+            Guid.NewGuid(),
+            matchResult.TenantId,
+            id,
+            matchResult.MatchingRuleId,
+            openedAt));
+
+        return exceptionCase;
     }
 
     public void AssignTo(Guid userId)

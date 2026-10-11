@@ -23,7 +23,7 @@
 
         @if (_isLoading)
         {
-            <div class="dashboard-state" role="status" aria-live="polite">
+            <div class="dashboard-state deferred-loading" role="status" aria-live="polite">
                 <span class="dashboard-spinner" aria-hidden="true"></span>
                 <span>Loading workspace activity…</span>
             </div>
@@ -33,7 +33,9 @@
             <SystemState Eyebrow="Workspace"
                          Marker="!"
                          Title="Dashboard unavailable"
-                         Description="The workspace summary could not be loaded. Your data was not changed.">
+                         Description="The workspace summary could not be loaded. Your data was not changed."
+                         Role="alert"
+                         AriaLive="assertive">
                 <Actions><a class="btn btn-outline-secondary" href="/">Try again</a></Actions>
             </SystemState>
         }

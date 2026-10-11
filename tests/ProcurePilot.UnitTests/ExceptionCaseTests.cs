@@ -177,6 +177,94 @@ public sealed class ExceptionCaseTests
                 EvaluatedAtUtc.AddMinutes(1)));
     }
 
+    [Fact]
+    public void FailedMatchCreatesFourDeterministicEvidenceRecords()
+    {
+        var fixture = CreateFixture(failed: true);
+        var openedAt = EvaluatedAtUtc.AddMinutes(1);
+
+        var exceptionCase = ExceptionCase.CreateFromFailedMatch(
+            Guid.NewGuid(),
+            fixture.InvoiceLine,
+            fixture.PurchaseOrderLine,
+            fixture.MatchResult,
+            ExceptionSeverity.Medium,
+            openedAt);
+
+        Assert.Equal(4, exceptionCase.Evidences.Count);
+
+        var invoicePriceEvidence = Assert.Single(
+            exceptionCase.Evidences,
+            e => e.Type == ExceptionEvidenceType.InvoicePrice);
+        Assert.Equal(fixture.TenantId, invoicePriceEvidence.TenantId);
+        Assert.Equal(exceptionCase.Id, invoicePriceEvidence.ExceptionCaseId);
+        Assert.Equal(fixture.InvoiceLine.Id, invoicePriceEvidence.InvoiceLineId);
+        Assert.Null(invoicePriceEvidence.PurchaseOrderLineId);
+        Assert.Null(invoicePriceEvidence.MatchResultId);
+        Assert.Null(invoicePriceEvidence.MatchingRuleId);
+        Assert.Equal(openedAt, invoicePriceEvidence.RecordedAtUtc);
+
+        var poPriceEvidence = Assert.Single(
+            exceptionCase.Evidences,
+            e => e.Type == ExceptionEvidenceType.PurchaseOrderPrice);
+        Assert.Equal(fixture.TenantId, poPriceEvidence.TenantId);
+        Assert.Equal(exceptionCase.Id, poPriceEvidence.ExceptionCaseId);
+        Assert.Equal(fixture.PurchaseOrderLine.Id, poPriceEvidence.PurchaseOrderLineId);
+        Assert.Null(poPriceEvidence.InvoiceLineId);
+        Assert.Null(poPriceEvidence.MatchResultId);
+        Assert.Null(poPriceEvidence.MatchingRuleId);
+        Assert.Equal(openedAt, poPriceEvidence.RecordedAtUtc);
+
+        var varianceEvidence = Assert.Single(
+            exceptionCase.Evidences,
+            e => e.Type == ExceptionEvidenceType.PriceVariance);
+        Assert.Equal(fixture.TenantId, varianceEvidence.TenantId);
+        Assert.Equal(exceptionCase.Id, varianceEvidence.ExceptionCaseId);
+        Assert.Equal(fixture.MatchResult.Id, varianceEvidence.MatchResultId);
+        Assert.Null(varianceEvidence.InvoiceLineId);
+        Assert.Null(varianceEvidence.PurchaseOrderLineId);
+        Assert.Null(varianceEvidence.MatchingRuleId);
+        Assert.Equal(openedAt, varianceEvidence.RecordedAtUtc);
+
+        var toleranceEvidence = Assert.Single(
+            exceptionCase.Evidences,
+            e => e.Type == ExceptionEvidenceType.RuleTolerance);
+        Assert.Equal(fixture.TenantId, toleranceEvidence.TenantId);
+        Assert.Equal(exceptionCase.Id, toleranceEvidence.ExceptionCaseId);
+        Assert.Equal(fixture.MatchResult.MatchingRuleId, toleranceEvidence.MatchingRuleId);
+        Assert.Null(toleranceEvidence.InvoiceLineId);
+        Assert.Null(toleranceEvidence.PurchaseOrderLineId);
+        Assert.Null(toleranceEvidence.MatchResultId);
+        Assert.Equal(openedAt, toleranceEvidence.RecordedAtUtc);
+    }
+
+    [Fact]
+    public void EvidenceFactoryValidatesRequiredIdentifiers()
+    {
+        var tenantId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+        var lineId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        Assert.Throws<ArgumentException>(() =>
+            ExceptionCaseEvidence.CreateInvoicePrice(Guid.Empty, tenantId, caseId, lineId, now));
+        Assert.Throws<ArgumentException>(() =>
+            ExceptionCaseEvidence.CreateInvoicePrice(Guid.NewGuid(), Guid.Empty, caseId, lineId, now));
+        Assert.Throws<ArgumentException>(() =>
+            ExceptionCaseEvidence.CreateInvoicePrice(Guid.NewGuid(), tenantId, Guid.Empty, lineId, now));
+        Assert.Throws<ArgumentException>(() =>
+            ExceptionCaseEvidence.CreateInvoicePrice(Guid.NewGuid(), tenantId, caseId, Guid.Empty, now));
+
+        Assert.Throws<ArgumentException>(() =>
+            ExceptionCaseEvidence.CreatePurchaseOrderPrice(Guid.NewGuid(), tenantId, caseId, Guid.Empty, now));
+
+        Assert.Throws<ArgumentException>(() =>
+            ExceptionCaseEvidence.CreatePriceVariance(Guid.NewGuid(), tenantId, caseId, Guid.Empty, now));
+
+        Assert.Throws<ArgumentException>(() =>
+            ExceptionCaseEvidence.CreateRuleTolerance(Guid.NewGuid(), tenantId, caseId, Guid.Empty, now));
+    }
+
     private static void Transition(ExceptionCase exceptionCase, ExceptionCaseStatus status) =>
         exceptionCase.TransitionTo(status, exceptionCase.OpenedAtUtc);
 

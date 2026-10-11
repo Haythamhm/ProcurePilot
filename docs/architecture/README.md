@@ -19,3 +19,4 @@ Implemented architecture notes:
 - [Matching rule](matching-rule.md) — tenant-scoped and versioned price-tolerance configuration.
 - [Price variance matching](price-variance-matching.md) — deterministic, reproducible and tenant-safe line-price evaluation.
 - [Exception case state machine](exception-case-state-machine.md) — tenant-scoped exception aggregate and deterministic workflow transitions.
+- [Exception evidence](exception-evidence.md) — deterministic typed relational evidence references for price-variance exceptions.

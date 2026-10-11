@@ -22,3 +22,4 @@ An ADR must explain context, the decision, alternatives, consequences, security/
 | [ADR-DATA-002](ADR-DATA-002.md) | Accepted | PP-2 | PostgreSQL local orchestration and EF Core migrations |
 | [ADR-IDENTITY-003](ADR-IDENTITY-003.md) | Accepted | PP-4 | ASP.NET Core Identity and tenant isolation baseline |
 | [ADR-STORAGE-004](ADR-STORAGE-004.md) | Accepted | PP-9 | Azure Blob-compatible invoice document storage |
+| [ADR-EXCEPTION-005](ADR-EXCEPTION-005.md) | Accepted | PP-22 | Typed relational evidence references for price-variance exception cases |

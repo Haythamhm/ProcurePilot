@@ -1,63 +1,192 @@
-<div class="brand-row">
-    <a class="navbar-brand" href="" aria-label="ProcurePilot home">
-        <span class="brand-mark" aria-hidden="true">P</span>
-        <span><span class="brand-name">ProcurePilot</span><span class="brand-suffix">CONTROL DESK</span></span>
-    </a>
-</div>
+<div class="sidebar-wrapper @(IsCollapsed ? "collapsed" : "")">
+    <div class="sidebar-header">
+        <a class="brand-link" href="" aria-label="ProcurePilot Accueil" title="ProcurePilot">
+            <img src="images/logo.png" class="brand-logo" alt="Logo ProcurePilot" />
+            @if (!IsCollapsed)
+            {
+                <span class="brand-title">ProcurePilot</span>
+            }
+        </a>
 
-<input id="navigation-toggle" type="checkbox" class="navbar-toggler" aria-label="Toggle navigation menu" />
-<label class="navbar-toggler-label" for="navigation-toggle">
-    <span class="pp-icon-menu" aria-hidden="true"></span>
-    <span class="visually-hidden">Toggle navigation menu</span>
-</label>
+        <button type="button" class="sidebar-collapse-btn @(IsCollapsed ? "collapsed" : "")" @onclick="ToggleCollapse" title="@(IsCollapsed ? "Agrandir le menu" : "Réduire le menu")" aria-label="@(IsCollapsed ? "Agrandir le menu" : "Réduire le menu")">
+            <svg class="collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                @if (IsCollapsed)
+                {
+                    <polyline points="13 17 18 12 13 7"></polyline>
+                    <polyline points="6 17 11 12 6 7"></polyline>
+                }
+                else
+                {
+                    <polyline points="11 17 6 12 11 7"></polyline>
+                    <polyline points="18 17 13 12 18 7"></polyline>
+                }
+            </svg>
+        </button>
+    </div>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav" aria-label="Primary navigation">
-        <div class="nav-section-label">Overview</div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="nav-icon pp-icon-home" aria-hidden="true"></span>
-                <span>Workspace</span>
-            </NavLink>
+    <nav class="sidebar-nav" aria-label="Navigation principale">
+        <div class="nav-section">
+            <div class="nav-item">
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All" title="Tableau de bord">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                        </svg>
+                    </span>
+                    @if (!IsCollapsed)
+                    {
+                        <span class="nav-label">Tableau de bord</span>
+                    }
+                </NavLink>
+            </div>
+
+            <AuthorizeView>
+                <Authorized>
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="purchase-orders" title="Bons de commande">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                            </span>
+                            @if (!IsCollapsed)
+                            {
+                                <span class="nav-label">Bons de commande</span>
+                            }
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="work-queue" title="File d'attente (Exceptions)">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                            </span>
+                            @if (!IsCollapsed)
+                            {
+                                <span class="nav-label">File d'exceptions</span>
+                            }
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item">
+                        <NavLink class="nav-link" href="invoices/upload" title="Téléverser facture">
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </span>
+                            @if (!IsCollapsed)
+                            {
+                                <span class="nav-label">Upload facture</span>
+                            }
+                        </NavLink>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
         </div>
+
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="theme-row @(IsCollapsed ? "collapsed" : "")">
+            @if (!IsCollapsed)
+            {
+                <div class="theme-text-wrap">
+                    <svg class="theme-moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <span class="theme-label">Dark theme</span>
+                </div>
+                <button type="button" class="theme-switch-btn @(IsDarkMode ? "active" : "")" role="switch" aria-checked="@(IsDarkMode ? "true" : "false")" @onclick="ToggleTheme" title="@(IsDarkMode ? "Activer le mode clair" : "Activer le mode sombre")" aria-label="@(IsDarkMode ? "Activer le mode clair" : "Activer le mode sombre")">
+                    <span class="theme-switch-knob"></span>
+                </button>
+            }
+            else
+            {
+                <button type="button" class="theme-compact-toggle @(IsDarkMode ? "active" : "")" @onclick="ToggleTheme" title="@(IsDarkMode ? "Activer le mode clair" : "Activer le mode sombre")" aria-label="@(IsDarkMode ? "Activer le mode clair" : "Activer le mode sombre")" aria-pressed="@(IsDarkMode ? "true" : "false")">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        @if (IsDarkMode)
+                        {
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                        }
+                        else
+                        {
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        }
+                    </svg>
+                </button>
+            }
+        </div>
+
+        <div class="footer-item">
+            <a href="purchase-orders" class="footer-link" title="Paramètres">
+                <span class="footer-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </span>
+                @if (!IsCollapsed)
+                {
+                    <span class="footer-label">Settings</span>
+                }
+            </a>
+        </div>
+
         <AuthorizeView>
             <Authorized>
-                <div class="nav-section-label">Exception operations</div>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="work-queue">
-                        <span class="nav-icon nav-symbol" aria-hidden="true">!</span>
-                        <span>Work queue</span>
-                    </NavLink>
-                </div>
-                <div class="nav-section-label">Invoice operations</div>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="invoices/upload">
-                        <span class="nav-icon pp-icon-purchase-order" aria-hidden="true"></span>
-                        <span>Upload invoice</span>
-                    </NavLink>
-                </div>
-                <div class="nav-section-label">Reference</div>
-                <div class="nav-item">
-                    <NavLink class="nav-link" href="purchase-orders">
-                        <span class="nav-icon pp-icon-purchase-order" aria-hidden="true"></span>
-                        <span>Purchase orders</span>
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView>
-            <Authorized>
-                <div class="nav-assurance">
-                    <span aria-hidden="true">✓</span>
-                    <p><strong>Tenant protected</strong><small>Human-reviewed finance</small></p>
-                </div>
-                <div class="nav-item nav-item-secondary">
-                    <a class="nav-link" href="/account/logout">
-                        <span class="nav-icon pp-icon-logout" aria-hidden="true"></span>
-                        <span>Sign out</span>
+                <div class="footer-item">
+                    <a href="/account/logout" class="footer-link signout-link" title="Se déconnecter">
+                        <span class="footer-icon signout-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                        </span>
+                        @if (!IsCollapsed)
+                        {
+                            <span class="footer-label signout-text">Sign out</span>
+                        }
                     </a>
                 </div>
             </Authorized>
         </AuthorizeView>
-    </nav>
+    </div>
 </div>
+
+@code {
+    [Parameter]
+    public bool IsCollapsed { get; set; }
+
+    [Parameter]
+    public bool IsDarkMode { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggleCollapse { get; set; }
+
+    [Parameter]
+    public EventCallback OnThemeToggle { get; set; }
+
+    private async Task ToggleCollapse()
+    {
+        await OnToggleCollapse.InvokeAsync();
+    }
+
+    private Task ToggleTheme() => OnThemeToggle.InvokeAsync();
+}

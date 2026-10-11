@@ -10,7 +10,7 @@
 
 @if (_isLoading)
 {
-    <section class="exception-skeleton" role="status" aria-live="polite" aria-busy="true">
+    <section class="exception-skeleton deferred-loading" role="status" aria-live="polite" aria-busy="true">
         <span class="visually-hidden">Loading exception workspace</span>
         <div></div><div></div><div></div><div></div>
     </section>
@@ -20,7 +20,9 @@ else if (_loadFailed)
     <SystemState Eyebrow="Exception workspace"
                  Marker="!"
                  Title="The exception could not be loaded"
-                 Description="The read-only case context is temporarily unavailable. No financial data was changed.">
+                 Description="The read-only case context is temporarily unavailable. No financial data was changed."
+                 Role="alert"
+                 AriaLive="assertive">
         <Actions><a class="btn btn-outline-secondary" href="@CurrentUrl">Try again</a></Actions>
     </SystemState>
 }
@@ -53,6 +55,43 @@ else
     </header>
 
     <ExceptionComparison Model="_workspace" />
+
+    <section class="case-evidence" aria-labelledby="case-evidence-title">
+        <div class="evidence-header">
+            <p class="card-kicker">Audit trail</p>
+            <h2 id="case-evidence-title">Factual evidence</h2>
+            <p class="evidence-summary">Persisted match facts captured deterministically when price variance was evaluated.</p>
+        </div>
+
+        @if (_workspace.Evidences.Count == 0)
+        {
+            <div class="empty-evidence" role="status">
+                No factual evidence records are available for this exception case.
+            </div>
+        }
+        else
+        {
+            <div class="evidence-grid">
+                @foreach (var evidence in _workspace.Evidences)
+                {
+                    <article class="evidence-card" aria-label="@evidence.Label">
+                        <span class="evidence-type-badge">@evidence.Label</span>
+                        <p class="evidence-value">@evidence.ValueText</p>
+                        <dl class="evidence-meta">
+                            <div>
+                                <dt>Reference</dt>
+                                <dd>@evidence.SourceReference</dd>
+                            </div>
+                            <div>
+                                <dt>Captured</dt>
+                                <dd><time datetime="@evidence.RecordedAtUtc.ToString("O")">@evidence.RecordedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</time></dd>
+                            </div>
+                        </dl>
+                    </article>
+                }
+            </div>
+        }
+    </section>
 
     <section class="case-context" aria-labelledby="case-context-title">
         <div>

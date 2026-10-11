@@ -17,7 +17,7 @@
 
 @if (_isLoading)
 {
-    <div class="state-card" role="status" aria-live="polite">
+    <div class="state-card deferred-loading" role="status" aria-live="polite">
         <span class="state-indicator" aria-hidden="true"></span>
         <div>
             <strong>Loading purchase orders</strong>
@@ -27,13 +27,14 @@
 }
 else if (_loadFailed)
 {
-    <div class="state-card state-card-error" role="alert">
-        <span class="state-symbol" aria-hidden="true">!</span>
-        <div>
-            <strong>Purchase orders could not be loaded</strong>
-            <p>Please try again later.</p>
-        </div>
-    </div>
+    <SystemState Eyebrow="Purchasing"
+                 Marker="!"
+                 Title="Purchase orders could not be loaded"
+                 Description="The tenant-scoped reference data is temporarily unavailable. No purchase order was changed."
+                 Role="alert"
+                 AriaLive="assertive">
+        <Actions><a class="btn btn-outline-secondary" href="/purchase-orders">Try again</a></Actions>
+    </SystemState>
 }
 else if (_purchaseOrders.Count == 0)
 {

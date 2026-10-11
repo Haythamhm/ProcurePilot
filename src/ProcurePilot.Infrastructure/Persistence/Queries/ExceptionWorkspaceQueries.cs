@@ -1,5 +1,7 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Exceptions;
+using ProcurePilot.Domain.Exceptions;
 
 namespace ProcurePilot.Infrastructure.Persistence.Queries;
 
@@ -82,34 +84,142 @@ internal sealed class ExceptionWorkspaceQueries(ProcurePilotDbContext dbContext)
                 })
             .SingleOrDefaultAsync(cancellationToken);
 
-        return projection is null
-            ? null
-            : new ExceptionWorkspaceReadModel(
-                projection.Id,
-                projection.Type.ToString(),
-                projection.Status.ToString(),
-                projection.Severity.ToString(),
-                projection.OpenedAtUtc,
-                projection.ResolvedAtUtc,
-                projection.AssignedToDisplayName,
-                projection.VendorName,
-                projection.InvoiceNumber,
+        if (projection is null)
+        {
+            return null;
+        }
+
+        var rawEvidences = await (
+                from evidence in dbContext.ExceptionCaseEvidences.AsNoTracking()
+                where evidence.ExceptionCaseId == exceptionCaseId
+                join invoiceLine in dbContext.InvoiceLines.AsNoTracking()
+                    on new { evidence.TenantId, LineId = evidence.InvoiceLineId }
+                    equals new { invoiceLine.TenantId, LineId = (Guid?)invoiceLine.Id }
+                    into invoiceLines
+                from invoiceLine in invoiceLines.DefaultIfEmpty()
+                join poLine in dbContext.PurchaseOrderLines.AsNoTracking()
+                    on new { evidence.TenantId, LineId = evidence.PurchaseOrderLineId }
+                    equals new { poLine.TenantId, LineId = (Guid?)poLine.Id }
+                    into poLines
+                from poLine in poLines.DefaultIfEmpty()
+                join matchResult in dbContext.MatchResults.AsNoTracking()
+                    on new { evidence.TenantId, ResultId = evidence.MatchResultId }
+                    equals new { matchResult.TenantId, ResultId = (Guid?)matchResult.Id }
+                    into matchResults
+                from matchResult in matchResults.DefaultIfEmpty()
+                join matchingRule in dbContext.MatchingRules.AsNoTracking()
+                    on new { evidence.TenantId, RuleId = evidence.MatchingRuleId }
+                    equals new { matchingRule.TenantId, RuleId = (Guid?)matchingRule.Id }
+                    into matchingRules
+                from matchingRule in matchingRules.DefaultIfEmpty()
+                select new
+                {
+                    evidence.Type,
+                    evidence.RecordedAtUtc,
+                    InvoiceUnitPrice = invoiceLine == null ? (decimal?)null : invoiceLine.UnitPrice,
+                    InvoiceLineNumber = invoiceLine == null ? (int?)null : invoiceLine.LineNumber,
+                    PurchaseOrderUnitPrice = poLine == null ? (decimal?)null : poLine.UnitPrice,
+                    PurchaseOrderLineNumber = poLine == null ? (int?)null : poLine.LineNumber,
+                    VariancePercent = matchResult == null ? (decimal?)null : matchResult.VariancePercent,
+                    AllowedTolerancePercent = matchingRule == null ? (decimal?)null : matchingRule.AllowedTolerancePercent,
+                    RuleType = matchingRule == null ? null : matchingRule.Type.ToString(),
+                    RuleVersion = matchingRule == null ? (int?)null : matchingRule.Version
+                })
+            .ToListAsync(cancellationToken);
+
+        var evidences = rawEvidences
+            .OrderBy(e => (int)e.Type)
+            .Select(e => MapEvidence(
+                e.Type,
+                e.RecordedAtUtc,
+                e.InvoiceUnitPrice,
+                e.InvoiceLineNumber,
                 projection.InvoiceCurrency,
-                projection.InvoiceLineNumber,
-                projection.InvoiceLineDescription,
-                projection.InvoiceQuantity,
-                projection.InvoiceUnitPrice,
-                projection.InvoiceSourceFileName,
-                projection.PurchaseOrderNumber,
+                e.PurchaseOrderUnitPrice,
+                e.PurchaseOrderLineNumber,
                 projection.PurchaseOrderCurrency,
-                projection.PurchaseOrderLineNumber,
-                projection.PurchaseOrderLineDescription,
-                projection.PurchaseOrderQuantity,
-                projection.PurchaseOrderUnitPrice,
-                projection.VariancePercent,
-                projection.AllowedTolerancePercent,
-                projection.MatchingRuleType.ToString(),
-                projection.MatchingRuleVersion,
-                projection.EvaluatedAtUtc);
+                e.VariancePercent,
+                e.AllowedTolerancePercent,
+                e.RuleType,
+                e.RuleVersion))
+            .ToList();
+
+        return new ExceptionWorkspaceReadModel(
+            projection.Id,
+            projection.Type.ToString(),
+            projection.Status.ToString(),
+            projection.Severity.ToString(),
+            projection.OpenedAtUtc,
+            projection.ResolvedAtUtc,
+            projection.AssignedToDisplayName,
+            projection.VendorName,
+            projection.InvoiceNumber,
+            projection.InvoiceCurrency,
+            projection.InvoiceLineNumber,
+            projection.InvoiceLineDescription,
+            projection.InvoiceQuantity,
+            projection.InvoiceUnitPrice,
+            projection.InvoiceSourceFileName,
+            projection.PurchaseOrderNumber,
+            projection.PurchaseOrderCurrency,
+            projection.PurchaseOrderLineNumber,
+            projection.PurchaseOrderLineDescription,
+            projection.PurchaseOrderQuantity,
+            projection.PurchaseOrderUnitPrice,
+            projection.VariancePercent,
+            projection.AllowedTolerancePercent,
+            projection.MatchingRuleType.ToString(),
+            projection.MatchingRuleVersion,
+            projection.EvaluatedAtUtc,
+            evidences);
+    }
+
+    private static ExceptionWorkspaceEvidenceReadModel MapEvidence(
+        ExceptionEvidenceType type,
+        DateTimeOffset recordedAtUtc,
+        decimal? invoiceUnitPrice,
+        int? invoiceLineNumber,
+        string invoiceCurrency,
+        decimal? purchaseOrderUnitPrice,
+        int? purchaseOrderLineNumber,
+        string purchaseOrderCurrency,
+        decimal? variancePercent,
+        decimal? allowedTolerancePercent,
+        string? ruleType,
+        int? ruleVersion)
+    {
+        return type switch
+        {
+            ExceptionEvidenceType.InvoicePrice => new ExceptionWorkspaceEvidenceReadModel(
+                type.ToString(),
+                "Invoice unit price",
+                invoiceLineNumber.HasValue ? $"Invoice line {invoiceLineNumber.Value}" : "Invoice line",
+                invoiceUnitPrice.HasValue ? $"{invoiceCurrency} {invoiceUnitPrice.Value.ToString("N2", CultureInfo.InvariantCulture)}" : "Unavailable",
+                recordedAtUtc),
+            ExceptionEvidenceType.PurchaseOrderPrice => new ExceptionWorkspaceEvidenceReadModel(
+                type.ToString(),
+                "Purchase order unit price",
+                purchaseOrderLineNumber.HasValue ? $"PO line {purchaseOrderLineNumber.Value}" : "PO line",
+                purchaseOrderUnitPrice.HasValue ? $"{purchaseOrderCurrency} {purchaseOrderUnitPrice.Value.ToString("N2", CultureInfo.InvariantCulture)}" : "Unavailable",
+                recordedAtUtc),
+            ExceptionEvidenceType.PriceVariance => new ExceptionWorkspaceEvidenceReadModel(
+                type.ToString(),
+                "Price variance",
+                "Evaluated price difference",
+                variancePercent.HasValue ? $"{(variancePercent.Value > 0 ? "+" : string.Empty)}{variancePercent.Value.ToString("0.####", CultureInfo.InvariantCulture)}%" : "Unavailable",
+                recordedAtUtc),
+            ExceptionEvidenceType.RuleTolerance => new ExceptionWorkspaceEvidenceReadModel(
+                type.ToString(),
+                "Allowed tolerance threshold",
+                ruleType is not null && ruleVersion.HasValue ? $"{ruleType} · V{ruleVersion.Value}" : "Matching rule",
+                allowedTolerancePercent.HasValue ? $"±{allowedTolerancePercent.Value.ToString("0.####", CultureInfo.InvariantCulture)}%" : "Unavailable",
+                recordedAtUtc),
+            _ => new ExceptionWorkspaceEvidenceReadModel(
+                type.ToString(),
+                type.ToString(),
+                "Evidence reference",
+                "Recorded",
+                recordedAtUtc)
+        };
     }
 }
