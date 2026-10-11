@@ -513,6 +513,50 @@ public sealed class AppHostTests
             Assert.Equal(resolution.ResolvedAtUtc, auditEvent.OccurredAtUtc);
         }
 
+        await using (var resolutionMutationContext = new ProcurePilotDbContext(
+                         options,
+                         new TestTenantContext(bootstrapTenant.Id)))
+        {
+            var persistedResolution = await resolutionMutationContext.Resolutions
+                .SingleAsync(cancellationToken);
+            resolutionMutationContext.Entry(persistedResolution)
+                .Property(value => value.Reason)
+                .CurrentValue = "Tampered resolution";
+
+            var immutableResolution = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                resolutionMutationContext.SaveChangesAsync(cancellationToken));
+            Assert.Equal(
+                "Resolution records are immutable once persisted.",
+                immutableResolution.Message);
+        }
+
+        await using (var auditDeletionContext = new ProcurePilotDbContext(
+                         options,
+                         new TestTenantContext(bootstrapTenant.Id)))
+        {
+            var persistedAuditEvent = await auditDeletionContext.AuditEvents
+                .SingleAsync(cancellationToken);
+            auditDeletionContext.AuditEvents.Remove(persistedAuditEvent);
+
+            var immutableAuditEvent = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                auditDeletionContext.SaveChangesAsync(cancellationToken));
+            Assert.Equal(
+                "AuditEvent records are immutable once persisted.",
+                immutableAuditEvent.Message);
+        }
+
+        await using (var caseDeletionContext = new ProcurePilotDbContext(
+                         options,
+                         new TestTenantContext(bootstrapTenant.Id)))
+        {
+            var auditedCase = await caseDeletionContext.ExceptionCases
+                .SingleAsync(value => value.Id == persistedExceptionCase.Id, cancellationToken);
+            caseDeletionContext.ExceptionCases.Remove(auditedCase);
+
+            await Assert.ThrowsAsync<DbUpdateException>(() =>
+                caseDeletionContext.SaveChangesAsync(cancellationToken));
+        }
+
         await using (var resolvedQueueProvider = queueServices.BuildServiceProvider())
         await using (var resolvedQueueScope = resolvedQueueProvider.CreateAsyncScope())
         {

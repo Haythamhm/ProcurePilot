@@ -14,7 +14,7 @@ UC-EXC-08 and BR-EXC-002 require every override to have an authorized actor, a r
 2. Exception.Override is required both by the Blazor policy and by the command service. UI visibility is not an authorization control.
 3. Only Open, WaitingAction and WaitingExternal cases can be overridden. Domain code creates the Resolution and AuditEvent artifacts before applying the deterministic transition to Resolved.
 4. ExceptionCase, Resolution and AuditEvent are saved by one EF Core unit of work. PostgreSQL composite foreign keys preserve tenant ownership and a unique tenant/case index prevents a second resolution.
-5. PP-28 introduces only the Override resolution type and ExceptionOverride audit action. PP-29 will extend the model for non-override resolutions and shared audit behavior instead of duplicating this flow.
+5. PP-28 introduces only the Override resolution type and ExceptionOverride audit action. PP-29 hardens these persisted records as append-only. Additional resolution types remain deferred until product requirements define their semantics and permissions.
 
 ## Alternatives considered
 
@@ -44,7 +44,7 @@ UC-EXC-08 and BR-EXC-002 require every override to have an authorized actor, a r
 
 ## Explicitly deferred
 
-- Non-override resolution types and generic resolution orchestration: PP-29.
+- Non-override resolution types and generic resolution orchestration: deferred until their business semantics and permission rules are specified.
 - Audit timeline projection and UI: PP-30.
 - Configurable logging of rejected authorization attempts.
 
