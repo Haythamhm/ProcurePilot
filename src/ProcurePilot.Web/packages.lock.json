@@ -8,6 +8,16 @@
         "resolved": "10.0.12",
         "contentHash": "+sIBo9AMBZH46qHWHQdfzcGMt+RuBaPYrUMOAM9VjA7MQ9QtIez3lq1C3E05+Yroa94KKt3DSWaxmCI4H28a9Q=="
       },
+      "Microsoft.Extensions.AI.OpenAI": {
+        "type": "Direct",
+        "requested": "[10.5.2, )",
+        "resolved": "10.5.2",
+        "contentHash": "0LEhySZtEs/PlL6O4dDY2Oz2TNGFU7V2U55j+e+YxjOfXx/N1rKJ6fqrx+C/Z44XuKbPHRQw5yTQOF5IVfuV7g==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.5.2",
+          "OpenAI": "2.10.0"
+        }
+      },
       "Apache.Arrow": {
         "type": "Transitive",
         "resolved": "22.1.0",
@@ -203,6 +213,14 @@
           "Microsoft.EntityFrameworkCore": "[10.0.4, 11.0.0)",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.4, 11.0.0)",
           "Npgsql": "10.0.3"
+        }
+      },
+      "OpenAI": {
+        "type": "Transitive",
+        "resolved": "2.10.0",
+        "contentHash": "e5gAhMDcX5bFmmtR+lT6qZxJoaGb0SkIplPUUdKwcC4xerCh471hTIsrvfkou7scfZD9YQk6C06dP3NwBqHw1A==",
+        "dependencies": {
+          "System.ClientModel": "1.10.0"
         }
       },
       "OpenTelemetry": {
