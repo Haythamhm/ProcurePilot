@@ -20,3 +20,5 @@ Implemented architecture notes:
 - [Price variance matching](price-variance-matching.md) — deterministic, reproducible and tenant-safe line-price evaluation.
 - [Exception case state machine](exception-case-state-machine.md) — tenant-scoped exception aggregate and deterministic workflow transitions.
 - [Exception evidence](exception-evidence.md) — deterministic typed relational evidence references for price-variance exceptions.
+- [AI chat client](ai-chat-client.md) — provider-neutral Microsoft.Extensions.AI composition root and configuration.
+- [AI exception explanation](ai-exception-explanation.md) — versioned prompt and structured explanation service for price-variance exceptions.

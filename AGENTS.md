@@ -29,3 +29,16 @@ https://www.figma.com/board/KtOZw1JvPlaHjyC1iWNOUk/ProcurePilot---Exception-Reso
 - Check Definition of Ready before starting a task.
 - Check Definition of Done before marking a task complete.
 - Keep tests and documentation synchronized with implementation.
+
+## UI Skills integration
+
+- When an UI task requires implementation, use ui-skills CLI to load the relevant skill or skills.
+- Only use the audited package version for reproducibility:
+```bash
+npx --yes ui-skills@0.2.4 start
+npx --yes ui-skills@0.2.4 categories
+npx --yes ui-skills@0.2.4 list --category <category>
+npx --yes ui-skills@0.2.4 get <slug>
+```
+- Extract only the selected skills into your context; do not load unrelated skills.
+- Preserve repository instructions, product requirements, and existing design logic.
