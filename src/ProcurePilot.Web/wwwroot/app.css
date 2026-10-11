@@ -15,6 +15,45 @@
     --bs-link-color: var(--pp-primary);
     --bs-link-hover-color: var(--pp-ink);
     --bs-focus-ring-color: rgb(155 164 181 / 45%);
+
+    /* Semantic surface tokens */
+    --pp-bg-canvas: #F1F6F9;
+    --pp-bg-card: rgb(255 255 255);
+    --pp-bg-sidebar: rgb(255 255 255);
+    --pp-border-subtle: rgb(155 164 181 / 25%);
+    --pp-text-main: #212A3E;
+    --pp-text-sub: #394867;
+    --pp-text-muted-alt: #9BA4B5;
+    --pp-nav-hover: rgb(241 246 249);
+    --pp-nav-active: rgb(57 72 103 / 12%);
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --pp-surface: #212A3E;
+    --pp-primary: #9BA4B5;
+    --pp-ink: #F1F6F9;
+    --pp-muted: #394867;
+    --bs-body-color: var(--pp-ink);
+    --bs-body-bg: var(--pp-surface);
+    --bs-primary: var(--pp-primary);
+    --bs-primary-rgb: 155, 164, 181;
+    --bs-secondary-color: var(--pp-primary);
+    --bs-border-color: var(--pp-muted);
+    --bs-danger: var(--pp-primary);
+    --bs-link-color: var(--pp-primary);
+    --bs-link-hover-color: var(--pp-ink);
+
+    /* Semantic dark surface tokens */
+    --pp-bg-canvas: #212A3E;
+    --pp-bg-card: rgb(33 42 62);
+    --pp-bg-sidebar: #212A3E;
+    --pp-border-subtle: rgb(57 72 103 / 60%);
+    --pp-text-main: #F1F6F9;
+    --pp-text-sub: #9BA4B5;
+    --pp-text-muted-alt: rgb(155 164 181 / 70%);
+    --pp-nav-hover: rgb(57 72 103 / 40%);
+    --pp-nav-active: rgb(57 72 103 / 70%);
 }
 
 *,
@@ -410,3 +449,45 @@ h1[tabindex="-1"]:focus {
         transition-duration: 0.01ms !important;
     }
 }
+
+:root[data-theme="dark"] article,
+:root[data-theme="dark"] .page,
+:root[data-theme="dark"] body {
+    background: var(--pp-surface);
+    color: var(--pp-ink);
+}
+
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .dashboard-card,
+:root[data-theme="dark"] .po-card,
+:root[data-theme="dark"] .state-card,
+:root[data-theme="dark"] .kpi-card,
+:root[data-theme="dark"] .kpi-tile,
+:root[data-theme="dark"] .summary-card {
+    background: rgb(57 72 103 / 22%);
+    border-color: rgb(155 164 181 / 25%);
+    color: var(--pp-ink);
+}
+
+:root[data-theme="dark"] .top-row {
+    background: #212A3E;
+    border-color: rgb(57 72 103 / 50%);
+}
+
+:root[data-theme="dark"] .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--pp-ink);
+    --bs-table-border-color: rgb(155 164 181 / 20%);
+}
+
+:root[data-theme="dark"] .table thead th {
+    background: rgb(57 72 103 / 35%);
+    color: var(--pp-ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    body, .page, article, .sidebar, .top-row, .card, .dashboard-card, .po-card {
+        transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    }
+}
+

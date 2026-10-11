@@ -1,27 +1,72 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+<div class="page @(_isSidebarCollapsed ? "sidebar-collapsed" : "")">
+    <aside class="sidebar @(_isSidebarCollapsed ? "collapsed" : "")" aria-label="Navigation principale">
+        <NavMenu IsCollapsed="_isSidebarCollapsed" OnToggleCollapse="ToggleSidebar" OnThemeChanged="HandleThemeChanged" />
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="top-row">
+            <div class="top-row-left">
+                <span class="workspace-context">Espace Entreprise</span>
+                <span class="breadcrumb-separator">/</span>
+                <span class="workspace-section">Procurement Core</span>
+            </div>
+
+            <div class="top-row-right">
+                <button type="button" class="top-theme-btn" @onclick="ToggleThemeFromTop" title="Basculer le thème (clair / sombre)" aria-label="Basculer le thème">
+                    @if (_isDarkMode)
+                    {
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    }
+                    else
+                    {
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    }
+                </button>
+
+                <div class="tenant-badge" title="Tenant sécurisé">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span>Multi-Tenant</span>
+                </div>
+
+                <AuthorizeView>
+                    <Authorized Context="authenticationState">
+                        <div class="signed-in-user">
+                            <div class="user-avatar-sm" aria-hidden="true">
+                                @(authenticationState.User.Identity?.Name?.Substring(0, 1).ToUpperInvariant() ?? "U")
+                            </div>
+                            <span class="user-name-text">@authenticationState.User.Identity?.Name</span>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/account/login" class="btn-login-link">Se connecter</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <main>
+            <article class="content">
+                @Body
+            </article>
+        </main>
     </div>
-
-    <main>
-        <div class="top-row">
-            <span class="workspace-context">Secure tenant workspace</span>
-            <AuthorizeView>
-                <Authorized Context="authenticationState">
-                    <span class="signed-in-user">
-                        <span class="pp-icon-user" aria-hidden="true"></span>
-                        <span>@authenticationState.User.Identity?.Name</span>
-                    </span>
-                </Authorized>
-            </AuthorizeView>
-        </div>
-
-        <article class="content">
-            @Body
-        </article>
-    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -29,3 +74,55 @@
     <a href="." class="reload">Reload</a>
     <button class="dismiss" type="button" aria-label="Dismiss error">×</button>
 </div>
+
+@code {
+    private bool _isSidebarCollapsed;
+    private bool _isDarkMode;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var theme = await JS.InvokeAsync<string>("ProcurePilotTheme.getTheme");
+                _isDarkMode = theme == "dark";
+                _isSidebarCollapsed = await JS.InvokeAsync<bool>("ProcurePilotTheme.getSidebarCollapsed");
+                StateHasChanged();
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private async Task ToggleSidebar()
+    {
+        _isSidebarCollapsed = !_isSidebarCollapsed;
+        try
+        {
+            await JS.InvokeVoidAsync("ProcurePilotTheme.setSidebarCollapsed", _isSidebarCollapsed);
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task ToggleThemeFromTop()
+    {
+        try
+        {
+            var newTheme = await JS.InvokeAsync<string>("ProcurePilotTheme.toggleTheme");
+            _isDarkMode = newTheme == "dark";
+        }
+        catch
+        {
+            _isDarkMode = !_isDarkMode;
+        }
+    }
+
+    private void HandleThemeChanged(bool isDark)
+    {
+        _isDarkMode = isDark;
+    }
+}
