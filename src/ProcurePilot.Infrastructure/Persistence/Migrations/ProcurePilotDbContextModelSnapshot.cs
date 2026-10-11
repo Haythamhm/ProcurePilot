@@ -152,6 +152,96 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ProcurePilot.Domain.Exceptions.AiAnalysis", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AnalysisType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("CompletionTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("ConfidenceScore")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("ExceptionCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int?>("PromptTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PromptVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("RawPayloadJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RecommendedAction")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RiskAssessment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RootCauseCategory")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("TotalTokens")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    b.HasIndex("TenantId", "ExceptionCaseId", "CreatedAtUtc");
+
+                    b.ToTable("AiAnalyses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AiAnalyses_ConfidenceScore", "\"ConfidenceScore\" IS NULL OR (\"ConfidenceScore\" >= 0 AND \"ConfidenceScore\" <= 1)");
+
+                            t.HasCheckConstraint("CK_AiAnalyses_DurationMs", "\"DurationMs\" >= 0");
+
+                            t.HasCheckConstraint("CK_AiAnalyses_Status", "\"Status\" IN ('Success', 'Failed', 'Unavailable')");
+                        });
+                });
+
             modelBuilder.Entity("ProcurePilot.Domain.Exceptions.ExceptionCase", b =>
                 {
                     b.Property<Guid>("Id")
@@ -825,6 +915,22 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ProcurePilot.Domain.Exceptions.AiAnalysis", b =>
+                {
+                    b.HasOne("ProcurePilot.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Domain.Exceptions.ExceptionCase", null)
+                        .WithMany("Analyses")
+                        .HasForeignKey("TenantId", "ExceptionCaseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ProcurePilot.Domain.Exceptions.ExceptionCase", b =>
                 {
                     b.HasOne("ProcurePilot.Domain.Tenancy.Tenant", null)
@@ -1032,6 +1138,8 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ProcurePilot.Domain.Exceptions.ExceptionCase", b =>
                 {
+                    b.Navigation("Analyses");
+
                     b.Navigation("Evidences");
                 });
 

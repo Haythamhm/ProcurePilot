@@ -13,6 +13,7 @@ using ProcurePilot.Application.Invoices.Extraction;
 using ProcurePilot.Application.Invoices.Review;
 using ProcurePilot.Application.Matching;
 using ProcurePilot.Application.Exceptions;
+using ProcurePilot.Application.Exceptions.Explanation;
 using ProcurePilot.Domain.Exceptions;
 using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Matching;
@@ -329,6 +330,34 @@ public sealed class AppHostTests
         queueServices.AddDataProtection();
         queueServices.AddScoped<ITenantContext>(_ => new TestTenantContext(bootstrapTenant.Id));
         queueServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
+        queueServices.AddScoped<IExceptionExplanationService>(_ => new StubExplanationService(
+            new ExceptionExplanationResult(
+                new ExceptionExplanationFacts(
+                    VendorBootstrapper.AtlasName,
+                    bootstrapInvoice.InvoiceNumber!,
+                    131.25m,
+                    "EUR",
+                    demoPurchaseOrder.Number,
+                    125m,
+                    "EUR",
+                    5m,
+                    3m,
+                    "PriceVariance"),
+                new ExceptionExplanationInterpretation(
+                    "Price exceeds PO rate by 5.00%.",
+                    "Price Variance",
+                    ["Unapproved tariff rate"]),
+                new ExceptionExplanationRecommendation(
+                    "Request a credit note of 6.25 EUR per unit.",
+                    ["Contact Atlas billing department"],
+                    "Low risk"),
+                [],
+                "2026-10-11.1",
+                "test-gpt-4o-mini",
+                0.95m,
+                DateTimeOffset.UtcNow,
+                new AiAnalysisTelemetry(150, 45, 195, 120),
+                "{\"status\": \"ok\"}")));
         await using (var queueProvider = queueServices.BuildServiceProvider())
         await using (var queueScope = queueProvider.CreateAsyncScope())
         {
@@ -370,6 +399,31 @@ public sealed class AppHostTests
             Assert.Equal(nameof(MatchingRuleType.PriceVariance), workspace.MatchingRuleType);
             Assert.Equal(initialMatchingRule.Version, workspace.MatchingRuleVersion);
             Assert.Equal(bootstrapUser.DisplayName, workspace.AssignedToDisplayName);
+
+            var aiAnalysisService = queueScope.ServiceProvider
+                .GetRequiredService<IAiAnalysisService>();
+            var recordedAnalysis = await aiAnalysisService.ExplainAndRecordAsync(
+                persistedExceptionCase.Id,
+                cancellationToken);
+            Assert.Equal("Success", recordedAnalysis.Status);
+            Assert.Equal("test-gpt-4o-mini", recordedAnalysis.Model);
+            Assert.Equal("2026-10-11.1", recordedAnalysis.PromptVersion);
+            Assert.Equal(0.95m, recordedAnalysis.ConfidenceScore);
+            Assert.Equal(150, recordedAnalysis.PromptTokens);
+            Assert.Equal(45, recordedAnalysis.CompletionTokens);
+            Assert.Equal(195, recordedAnalysis.TotalTokens);
+            Assert.True(recordedAnalysis.DurationMs >= 0);
+
+            var latest = await aiAnalysisService.GetLatestForCaseAsync(
+                persistedExceptionCase.Id,
+                cancellationToken);
+            Assert.NotNull(latest);
+            Assert.Equal(recordedAnalysis.Id, latest.Id);
+
+            var history = await aiAnalysisService.GetHistoryForCaseAsync(
+                persistedExceptionCase.Id,
+                cancellationToken);
+            Assert.Single(history);
         }
 
         persistedExceptionCase.TransitionTo(
@@ -409,6 +463,13 @@ public sealed class AppHostTests
                 .GetRequiredService<IExceptionWorkspaceQueries>()
                 .GetAsync(persistedExceptionCase.Id, cancellationToken);
             Assert.Null(crossTenantWorkspace);
+
+            var otherAiAnalysisService = otherQueueScope.ServiceProvider
+                .GetRequiredService<IAiAnalysisService>();
+            var crossTenantAnalysis = await otherAiAnalysisService.GetLatestForCaseAsync(
+                persistedExceptionCase.Id,
+                cancellationToken);
+            Assert.Null(crossTenantAnalysis);
         }
         var uploadServices = new ServiceCollection();
         uploadServices.AddLogging();
@@ -803,5 +864,15 @@ public sealed class AppHostTests
     private sealed class TestTimeProvider(DateTimeOffset utcNow) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private sealed class StubExplanationService(ExceptionExplanationResult result) : IExceptionExplanationService
+    {
+        public Task<ExceptionExplanationResult> ExplainAsync(
+            ExceptionExplanationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(result);
+        }
     }
 }
