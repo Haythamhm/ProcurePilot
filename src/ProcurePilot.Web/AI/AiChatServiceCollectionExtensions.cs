@@ -1,6 +1,7 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using ProcurePilot.Application.AI;
+using ProcurePilot.Application.Exceptions.Explanation;
 using ProcurePilot.Application.Invoices.Extraction;
 
 namespace ProcurePilot.Web.AI;
@@ -37,6 +38,7 @@ internal static class AiChatServiceCollectionExtensions
             };
         });
         services.AddScoped<IInvoiceExtractor, ChatClientInvoiceExtractor>();
+        services.AddScoped<IExceptionExplanationService, ChatClientExceptionExplanationService>();
 
         return services;
     }
