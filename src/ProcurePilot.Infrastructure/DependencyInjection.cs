@@ -13,6 +13,7 @@ using ProcurePilot.Application.Invoices.Review;
 using ProcurePilot.Application.Matching;
 using ProcurePilot.Application.Dashboard;
 using ProcurePilot.Application.Exceptions;
+using ProcurePilot.Application.AI.Evaluations;
 using ProcurePilot.Application.Exceptions.Explanation;
 using ProcurePilot.Infrastructure.Exceptions;
 using ProcurePilot.Infrastructure.Invoices;
@@ -43,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IExceptionWorkQueueQueries, ExceptionWorkQueueQueries>();
         services.AddScoped<IExceptionWorkspaceQueries, ExceptionWorkspaceQueries>();
         services.AddScoped<IAiAnalysisService, AiAnalysisService>();
+        services.AddSingleton<IAiEvaluationRunner, AiEvaluationRunner>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(new BlobServiceClient(invoiceBlobConnectionString));
         services.AddScoped<IInvoiceDocumentStorage, AzureBlobInvoiceDocumentStorage>();
