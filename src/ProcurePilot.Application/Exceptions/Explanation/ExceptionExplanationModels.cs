@@ -73,4 +73,6 @@ public sealed record ExceptionExplanationResult(
     string PromptVersion,
     string? ModelName,
     decimal ConfidenceScore,
-    DateTimeOffset GeneratedAtUtc);
+    DateTimeOffset GeneratedAtUtc,
+    AiAnalysisTelemetry? Telemetry = null,
+    string? RawPayloadJson = null);

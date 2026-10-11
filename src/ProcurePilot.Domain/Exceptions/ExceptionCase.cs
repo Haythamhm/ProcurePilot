@@ -87,6 +87,22 @@ public sealed class ExceptionCase : ITenantScopedEntity
 
     public IReadOnlyCollection<ExceptionCaseEvidence> Evidences => _evidences.AsReadOnly();
 
+    private readonly List<AiAnalysis> _analyses = [];
+
+    public IReadOnlyCollection<AiAnalysis> Analyses => _analyses.AsReadOnly();
+
+    public void AddAnalysis(AiAnalysis analysis)
+    {
+        ArgumentNullException.ThrowIfNull(analysis);
+
+        if (analysis.TenantId != TenantId || analysis.ExceptionCaseId != Id)
+        {
+            throw new InvalidOperationException("The analysis does not belong to this exception case.");
+        }
+
+        _analyses.Add(analysis);
+    }
+
     public static ExceptionCase CreateFromFailedMatch(
         Guid id,
         InvoiceLine invoiceLine,

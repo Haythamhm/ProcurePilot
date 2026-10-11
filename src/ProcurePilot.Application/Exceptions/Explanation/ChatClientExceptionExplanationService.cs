@@ -27,6 +27,7 @@ public sealed class ChatClientExceptionExplanationService(IChatClient chatClient
                 schemaDescription: "Structured price variance exception explanation and operational recommendation.")
         };
 
+        var startTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         ChatResponse response;
         try
         {
@@ -44,6 +45,8 @@ public sealed class ChatClientExceptionExplanationService(IChatClient chatClient
                 "The AI explanation provider was unavailable or rejected the request.",
                 exception);
         }
+
+        var durationMs = (long)System.Diagnostics.Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
 
         if (string.IsNullOrWhiteSpace(response.Text))
         {
@@ -68,11 +71,19 @@ public sealed class ChatClientExceptionExplanationService(IChatClient chatClient
 
         ValidateResult(result);
 
+        var telemetry = new AiAnalysisTelemetry(
+            PromptTokens: (int?)response.Usage?.InputTokenCount,
+            CompletionTokens: (int?)response.Usage?.OutputTokenCount,
+            TotalTokens: (int?)response.Usage?.TotalTokenCount,
+            DurationMs: durationMs);
+
         return result with
         {
             PromptVersion = ExceptionExplanationPrompt.CurrentVersion,
             ModelName = response.ModelId ?? result.ModelName,
-            GeneratedAtUtc = DateTimeOffset.UtcNow
+            GeneratedAtUtc = DateTimeOffset.UtcNow,
+            Telemetry = telemetry,
+            RawPayloadJson = response.Text
         };
     }
 

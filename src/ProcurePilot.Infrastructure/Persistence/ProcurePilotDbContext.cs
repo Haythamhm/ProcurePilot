@@ -45,6 +45,8 @@ public sealed class ProcurePilotDbContext(
 
     public DbSet<ExceptionCaseEvidence> ExceptionCaseEvidences => Set<ExceptionCaseEvidence>();
 
+    public DbSet<AiAnalysis> AiAnalyses => Set<AiAnalysis>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -471,6 +473,7 @@ public sealed class ProcurePilotDbContext(
                 .HasPrincipalKey(value => new { value.TenantId, UserId = value.Id })
                 .OnDelete(DeleteBehavior.Restrict);
             exceptionCase.Navigation(value => value.Evidences).UsePropertyAccessMode(PropertyAccessMode.Field);
+            exceptionCase.Navigation(value => value.Analyses).UsePropertyAccessMode(PropertyAccessMode.Field);
         });
 
         modelBuilder.Entity<ExceptionCaseEvidence>(evidence =>
@@ -539,6 +542,71 @@ public sealed class ProcurePilotDbContext(
                 .OnDelete(DeleteBehavior.Restrict);
 
             evidence.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(value => value.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AiAnalysis>(analysis =>
+        {
+            analysis.ToTable("AiAnalyses", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_AiAnalyses_Status",
+                    "\"Status\" IN ('Success', 'Failed', 'Unavailable')");
+                table.HasCheckConstraint(
+                    "CK_AiAnalyses_ConfidenceScore",
+                    "\"ConfidenceScore\" IS NULL OR (\"ConfidenceScore\" >= 0 AND \"ConfidenceScore\" <= 1)");
+                table.HasCheckConstraint(
+                    "CK_AiAnalyses_DurationMs",
+                    "\"DurationMs\" >= 0");
+            });
+
+            analysis.HasKey(value => value.Id);
+            analysis.HasAlternateKey(value => new { value.TenantId, value.Id });
+            analysis.Property(value => value.TenantId).IsRequired();
+            analysis.Property(value => value.ExceptionCaseId).IsRequired();
+            analysis.Property(value => value.AnalysisType)
+                .HasMaxLength(AiAnalysis.AnalysisTypeMaxLength)
+                .IsRequired();
+            analysis.Property(value => value.Status)
+                .HasConversion<string>()
+                .HasMaxLength(AiAnalysis.StatusMaxLength)
+                .IsRequired();
+            analysis.Property(value => value.Model)
+                .HasMaxLength(AiAnalysis.ModelMaxLength)
+                .IsRequired();
+            analysis.Property(value => value.PromptVersion)
+                .HasMaxLength(AiAnalysis.PromptVersionMaxLength)
+                .IsRequired();
+            analysis.Property(value => value.ConfidenceScore)
+                .HasPrecision(5, 4);
+            analysis.Property(value => value.Summary)
+                .HasMaxLength(AiAnalysis.SummaryMaxLength);
+            analysis.Property(value => value.RootCauseCategory)
+                .HasMaxLength(AiAnalysis.RootCauseCategoryMaxLength);
+            analysis.Property(value => value.RecommendedAction)
+                .HasMaxLength(AiAnalysis.RecommendedActionMaxLength);
+            analysis.Property(value => value.RiskAssessment)
+                .HasMaxLength(AiAnalysis.RiskAssessmentMaxLength);
+            analysis.Property(value => value.PromptTokens);
+            analysis.Property(value => value.CompletionTokens);
+            analysis.Property(value => value.TotalTokens);
+            analysis.Property(value => value.DurationMs).IsRequired();
+            analysis.Property(value => value.ErrorMessage)
+                .HasMaxLength(AiAnalysis.ErrorMessageMaxLength);
+            analysis.Property(value => value.RawPayloadJson);
+            analysis.Property(value => value.CreatedAtUtc).IsRequired();
+
+            analysis.HasIndex(value => new { value.TenantId, value.ExceptionCaseId, value.CreatedAtUtc });
+
+            analysis.HasOne<ExceptionCase>()
+                .WithMany(caseEntity => caseEntity.Analyses)
+                .HasForeignKey(value => new { value.TenantId, value.ExceptionCaseId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+
+            analysis.HasOne<Tenant>()
                 .WithMany()
                 .HasForeignKey(value => value.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);

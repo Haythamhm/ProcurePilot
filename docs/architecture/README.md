@@ -22,3 +22,4 @@ Implemented architecture notes:
 - [Exception evidence](exception-evidence.md) — deterministic typed relational evidence references for price-variance exceptions.
 - [AI chat client](ai-chat-client.md) — provider-neutral Microsoft.Extensions.AI composition root and configuration.
 - [AI exception explanation](ai-exception-explanation.md) — versioned prompt and structured explanation service for price-variance exceptions.
+- [AI analysis persistence and observability](ai-analysis-persistence.md) — relational persistence and OpenTelemetry execution telemetry for AI analyses.

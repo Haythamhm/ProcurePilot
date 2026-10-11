@@ -111,6 +111,9 @@ public sealed class ExceptionExplanationServiceTests
         Assert.Equal("gpt-4o-mini", result.ModelName);
         Assert.Equal(0.94m, result.ConfidenceScore);
         Assert.True(result.GeneratedAtUtc > DateTimeOffset.UtcNow.AddMinutes(-1));
+        Assert.NotNull(result.Telemetry);
+        Assert.True(result.Telemetry.DurationMs >= 0);
+        Assert.Equal(mockJson, result.RawPayloadJson);
 
         // Provider neutral options and chat request inspection
         Assert.Equal(2, chatClient.Messages.Count);
