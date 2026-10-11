@@ -2,7 +2,8 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 100vh;
+    min-height: 0;
+    height: 100dvh;
     background: var(--pp-bg-sidebar);
     color: var(--pp-text-main);
     border-right: 1px solid var(--pp-border-subtle);
@@ -10,6 +11,7 @@
     transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.28s ease;
     user-select: none;
     box-sizing: border-box;
+    position: relative;
 }
 
 .sidebar-wrapper.collapsed {
@@ -21,7 +23,7 @@
 .sidebar-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 0.75rem;
     padding-bottom: 1.25rem;
     border-bottom: 1px solid var(--pp-border-subtle);
@@ -29,7 +31,6 @@
 
 .sidebar-wrapper.collapsed .sidebar-header {
     justify-content: center;
-    gap: 0.4rem;
     padding-bottom: 1rem;
     width: 100%;
 }
@@ -81,7 +82,10 @@
     color: var(--pp-text-secondary);
     cursor: pointer;
     transition: all 0.2s ease;
-    flex-shrink: 0;
+    position: absolute;
+    right: -0.875rem;
+    top: 1.35rem;
+    z-index: 3;
 }
 
 .sidebar-collapse-btn:hover {
@@ -91,84 +95,34 @@
 }
 
 .sidebar-collapse-btn.collapsed {
-    width: 24px;
-    height: 24px;
+    top: 4rem;
 }
 
-/* 2. User Profile Card */
-.user-card {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    margin-top: 1rem;
-    background: var(--pp-nav-hover);
-    border: 1px solid var(--pp-border-subtle);
-    border-radius: 10px;
-    transition: all 0.2s ease;
-}
-
-.user-card.collapsed {
-    padding: 0.4rem;
-    background: transparent;
-    border-color: transparent;
-    justify-content: center;
-}
-
-.user-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #212A3E 0%, #394867 100%);
-    color: #F1F6F9;
-    font-weight: 700;
-    font-size: 0.875rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    border: 1.5px solid #9BA4B5;
-}
-
-.user-meta {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    flex: 1;
-}
-
-.user-display-name {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--pp-text-main);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.25;
-}
-
-.user-role-label {
-    font-size: 0.6875rem;
-    color: var(--pp-text-muted);
-    font-weight: 500;
-    line-height: 1.25;
-    margin-top: 2px;
-}
-
-.user-dropdown-arrow {
-    color: var(--pp-text-muted);
-    flex-shrink: 0;
-}
-
-/* 3. Navigation List */
 .sidebar-nav {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
     margin-top: 1.25rem;
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-color: var(--pp-text-muted) transparent;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--pp-text-muted);
+    border-radius: 9999px;
 }
 
 .sidebar-wrapper.collapsed .sidebar-nav {
@@ -198,6 +152,7 @@
     font-weight: 500;
     transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
     border: 1px solid transparent;
+    position: relative;
 }
 
 .sidebar-wrapper.collapsed ::deep .nav-link {
@@ -243,114 +198,6 @@
     text-overflow: ellipsis;
 }
 
-.nav-badge-pill {
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 0.125rem 0.45rem;
-    border-radius: 9999px;
-    background: rgb(225 45 60 / 12%);
-    color: rgb(225 45 60);
-    border: 1px solid rgb(225 45 60 / 25%);
-    line-height: 1.2;
-}
-
-.nav-badge-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: rgb(225 45 60);
-    margin-left: auto;
-}
-
-/* 4. Projects / Modules section */
-.nav-section-projects {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--pp-border-subtle);
-}
-
-.projects-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.25rem 0.75rem 0.45rem;
-}
-
-.projects-title {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    color: var(--pp-text-muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.projects-add-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 1px solid var(--pp-border-subtle);
-    background: var(--pp-nav-hover);
-    color: var(--pp-text-muted);
-    font-size: 0.8125rem;
-    line-height: 1;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.projects-add-btn:hover {
-    background: var(--pp-nav-active);
-    color: var(--pp-text-main);
-}
-
-.sidebar-wrapper ::deep .project-link {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
-    text-decoration: none;
-    color: var(--pp-text-secondary);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.sidebar-wrapper.collapsed ::deep .project-link {
-    justify-content: center;
-    padding: 0.5rem;
-    width: 42px;
-    height: 42px;
-}
-
-.sidebar-wrapper ::deep .project-link:hover {
-    background: var(--pp-nav-hover);
-    color: var(--pp-text-main);
-}
-
-.project-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.dot-magenta { background: rgb(225 45 110); }
-.dot-purple  { background: rgb(120 70 230); }
-.dot-blue    { background: rgb(40 120 240); }
-.dot-coral   { background: rgb(235 60 40); }
-
-.project-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* 5. Footer Area */
 .sidebar-footer {
     display: flex;
     flex-direction: column;
@@ -498,4 +345,16 @@
 .signout-link:hover {
     background: rgb(225 55 55 / 10%);
     color: rgb(225 55 55);
+}
+
+@media (max-width: 768px) {
+    .sidebar-wrapper,
+    .sidebar-wrapper.collapsed {
+        height: auto;
+        min-height: 0;
+    }
+
+    .sidebar-collapse-btn {
+        right: 1rem;
+    }
 }

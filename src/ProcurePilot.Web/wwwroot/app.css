@@ -404,6 +404,23 @@ h1[tabindex="-1"]:focus {
     text-transform: uppercase;
 }
 
+/* Avoid flashing a loading state when tenant-scoped reads complete immediately. */
+.deferred-loading {
+    animation: pp-reveal-loading 1ms linear 180ms both;
+}
+
+@keyframes pp-reveal-loading {
+    from {
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    to {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
 @media (max-width: 850px) {
     .auth-body {
         align-items: flex-start;

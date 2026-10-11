@@ -10,7 +10,7 @@
 
 @if (_isLoading)
 {
-    <section class="exception-skeleton" role="status" aria-live="polite" aria-busy="true">
+    <section class="exception-skeleton deferred-loading" role="status" aria-live="polite" aria-busy="true">
         <span class="visually-hidden">Loading exception workspace</span>
         <div></div><div></div><div></div><div></div>
     </section>
@@ -20,7 +20,9 @@ else if (_loadFailed)
     <SystemState Eyebrow="Exception workspace"
                  Marker="!"
                  Title="The exception could not be loaded"
-                 Description="The read-only case context is temporarily unavailable. No financial data was changed.">
+                 Description="The read-only case context is temporarily unavailable. No financial data was changed."
+                 Role="alert"
+                 AriaLive="assertive">
         <Actions><a class="btn btn-outline-secondary" href="@CurrentUrl">Try again</a></Actions>
     </SystemState>
 }

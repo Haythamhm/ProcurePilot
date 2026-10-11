@@ -167,6 +167,76 @@ public sealed partial class FrontendDesignSystemTests
         Assert.DoesNotContain("TODO", workspace, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void NavigationUsesOneThemeStateAndKeepsTheSidebarFocused()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var layoutRoot = Path.Combine(repositoryRoot, "src", "ProcurePilot.Web", "Components", "Layout");
+        var mainLayout = File.ReadAllText(Path.Combine(layoutRoot, "MainLayout.razor"));
+        var mainLayoutStyles = File.ReadAllText(Path.Combine(layoutRoot, "MainLayout.razor.css"));
+        var navigation = File.ReadAllText(Path.Combine(layoutRoot, "NavMenu.razor"));
+        var navigationStyles = File.ReadAllText(Path.Combine(layoutRoot, "NavMenu.razor.css"));
+
+        Assert.Contains("IsDarkMode=\"_isDarkMode\"", mainLayout, StringComparison.Ordinal);
+        Assert.Contains("OnThemeToggle=\"ToggleThemeAsync\"", mainLayout, StringComparison.Ordinal);
+        Assert.Contains("public bool IsDarkMode", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProcurePilotTheme.toggleTheme", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("admin@local.test", navigation, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("nav-section-projects", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("nav-badge-pill", navigation, StringComparison.Ordinal);
+        Assert.Contains("position: sticky", mainLayoutStyles, StringComparison.Ordinal);
+        Assert.Contains("scrollbar-width: thin", navigationStyles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TenantReadLoadingStatesAreDeferredToAvoidNavigationFlicker()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var pagesRoot = Path.Combine(repositoryRoot, "src", "ProcurePilot.Web", "Components", "Pages");
+        var pages = new[]
+        {
+            "Home.razor",
+            "WorkQueue.razor",
+            "PurchaseOrders.razor",
+            "ExceptionWorkspace.razor",
+            "InvoiceExtractionReview.razor"
+        };
+
+        foreach (var page in pages)
+        {
+            var source = File.ReadAllText(Path.Combine(pagesRoot, page));
+            Assert.Contains("deferred-loading", source, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void CriticalReadErrorsAreAccessibleAndRecoverable()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var componentsRoot = Path.Combine(repositoryRoot, "src", "ProcurePilot.Web", "Components");
+        var systemState = File.ReadAllText(Path.Combine(componentsRoot, "Shared", "SystemState.razor"));
+        var pagesRoot = Path.Combine(componentsRoot, "Pages");
+        var criticalReadPages = new[]
+        {
+            "Home.razor",
+            "WorkQueue.razor",
+            "PurchaseOrders.razor",
+            "ExceptionWorkspace.razor",
+            "InvoiceExtractionReview.razor"
+        };
+
+        Assert.Contains("role=\"@Role\"", systemState, StringComparison.Ordinal);
+        Assert.Contains("aria-live=\"@AriaLive\"", systemState, StringComparison.Ordinal);
+
+        foreach (var page in criticalReadPages)
+        {
+            var source = File.ReadAllText(Path.Combine(pagesRoot, page));
+            Assert.Contains("Role=\"alert\"", source, StringComparison.Ordinal);
+            Assert.Contains("AriaLive=\"assertive\"", source, StringComparison.Ordinal);
+            Assert.Contains("Try again", source, StringComparison.Ordinal);
+        }
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

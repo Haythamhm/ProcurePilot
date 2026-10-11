@@ -1,7 +1,4 @@
-@inject IJSRuntime JS
-
 <div class="sidebar-wrapper @(IsCollapsed ? "collapsed" : "")">
-    <!-- 1. Header with Logo, Title, and Collapse Button -->
     <div class="sidebar-header">
         <a class="brand-link" href="" aria-label="ProcurePilot Accueil" title="ProcurePilot">
             <img src="images/logo.png" class="brand-logo" alt="Logo ProcurePilot" />
@@ -27,28 +24,6 @@
         </button>
     </div>
 
-    <!-- 2. User Profile Card (Wetask/Mockup Style) -->
-    <AuthorizeView>
-        <Authorized Context="authState">
-            <div class="user-card @(IsCollapsed ? "collapsed" : "")" title="@authState.User.Identity?.Name">
-                <div class="user-avatar" aria-hidden="true">
-                    @(authState.User.Identity?.Name?.Substring(0, 1).ToUpperInvariant() ?? "U")
-                </div>
-                @if (!IsCollapsed)
-                {
-                    <div class="user-meta">
-                        <span class="user-display-name">@(authState.User.Identity?.Name ?? "Utilisateur")</span>
-                        <span class="user-role-label">Administrateur</span>
-                    </div>
-                    <svg class="user-dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                }
-            </div>
-        </Authorized>
-    </AuthorizeView>
-
-    <!-- 3. Navigation List (Main Navigation) -->
     <nav class="sidebar-nav" aria-label="Navigation principale">
         <div class="nav-section">
             <div class="nav-item">
@@ -100,11 +75,6 @@
                             @if (!IsCollapsed)
                             {
                                 <span class="nav-label">File d'exceptions</span>
-                                <span class="nav-badge-pill">3</span>
-                            }
-                            else
-                            {
-                                <span class="nav-badge-dot" aria-hidden="true"></span>
                             }
                         </NavLink>
                     </div>
@@ -128,65 +98,9 @@
             </AuthorizeView>
         </div>
 
-        <!-- 4. Projects / Modules Group (Inspired by Mockup) -->
-        <AuthorizeView>
-            <Authorized>
-                <div class="nav-section-projects">
-                    @if (!IsCollapsed)
-                    {
-                        <div class="projects-header">
-                            <span class="projects-title">PROJECT</span>
-                            <button type="button" class="projects-add-btn" title="Nouveau module" aria-label="Nouveau module">+</button>
-                        </div>
-                    }
-
-                    <div class="project-item">
-                        <NavLink class="project-link" href="work-queue" title="Documentations">
-                            <span class="project-dot dot-magenta" aria-hidden="true"></span>
-                            @if (!IsCollapsed)
-                            {
-                                <span class="project-text">Documentations</span>
-                            }
-                        </NavLink>
-                    </div>
-
-                    <div class="project-item">
-                        <NavLink class="project-link" href="purchase-orders" title="Commandes actives">
-                            <span class="project-dot dot-purple" aria-hidden="true"></span>
-                            @if (!IsCollapsed)
-                            {
-                                <span class="project-text">Commandes actives</span>
-                            }
-                        </NavLink>
-                    </div>
-
-                    <div class="project-item">
-                        <NavLink class="project-link" href="invoices/upload" title="Traitement OCR">
-                            <span class="project-dot dot-blue" aria-hidden="true"></span>
-                            @if (!IsCollapsed)
-                            {
-                                <span class="project-text">Traitement OCR</span>
-                            }
-                        </NavLink>
-                    </div>
-
-                    <div class="project-item">
-                        <NavLink class="project-link" href="work-queue" title="Analyse Écarts">
-                            <span class="project-dot dot-coral" aria-hidden="true"></span>
-                            @if (!IsCollapsed)
-                            {
-                                <span class="project-text">Analyse Écarts</span>
-                            }
-                        </NavLink>
-                    </div>
-                </div>
-            </Authorized>
-        </AuthorizeView>
     </nav>
 
-    <!-- 5. Bottom Footer with Dark theme toggle, Settings, and Sign out -->
     <div class="sidebar-footer">
-        <!-- Theme Toggle Switch -->
         <div class="theme-row @(IsCollapsed ? "collapsed" : "")">
             @if (!IsCollapsed)
             {
@@ -196,15 +110,15 @@
                     </svg>
                     <span class="theme-label">Dark theme</span>
                 </div>
-                <button type="button" class="theme-switch-btn @(_isDark ? "active" : "")" role="switch" aria-checked="@_isDark" @onclick="ToggleThemeAsync" title="@(_isDark ? "Activer mode clair" : "Activer mode sombre")" aria-label="Basculer le thème sombre">
+                <button type="button" class="theme-switch-btn @(IsDarkMode ? "active" : "")" role="switch" aria-checked="@(IsDarkMode ? "true" : "false")" @onclick="ToggleTheme" title="@(IsDarkMode ? "Activer le mode clair" : "Activer le mode sombre")" aria-label="@(IsDarkMode ? "Activer le mode clair" : "Activer le mode sombre")">
                     <span class="theme-switch-knob"></span>
                 </button>
             }
             else
             {
-                <button type="button" class="theme-compact-toggle @(_isDark ? "active" : "")" @onclick="ToggleThemeAsync" title="@(_isDark ? "Mode clair" : "Mode sombre")" aria-label="Basculer le thème">
+                <button type="button" class="theme-compact-toggle @(IsDarkMode ? "active" : "")" @onclick="ToggleTheme" title="@(IsDarkMode ? "Activer le mode clair" : "Activer le mode sombre")" aria-label="@(IsDarkMode ? "Activer le mode clair" : "Activer le mode sombre")" aria-pressed="@(IsDarkMode ? "true" : "false")">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        @if (_isDark)
+                        @if (IsDarkMode)
                         {
                             <circle cx="12" cy="12" r="5"></circle>
                             <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -219,7 +133,6 @@
             }
         </div>
 
-        <!-- Settings link -->
         <div class="footer-item">
             <a href="purchase-orders" class="footer-link" title="Paramètres">
                 <span class="footer-icon" aria-hidden="true">
@@ -235,7 +148,6 @@
             </a>
         </div>
 
-        <!-- Sign out link -->
         <AuthorizeView>
             <Authorized>
                 <div class="footer-item">
@@ -263,45 +175,18 @@
     public bool IsCollapsed { get; set; }
 
     [Parameter]
+    public bool IsDarkMode { get; set; }
+
+    [Parameter]
     public EventCallback OnToggleCollapse { get; set; }
 
     [Parameter]
-    public EventCallback<bool> OnThemeChanged { get; set; }
-
-    private bool _isDark;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            try
-            {
-                var theme = await JS.InvokeAsync<string>("ProcurePilotTheme.getTheme");
-                _isDark = theme == "dark";
-                StateHasChanged();
-            }
-            catch
-            {
-            }
-        }
-    }
+    public EventCallback OnThemeToggle { get; set; }
 
     private async Task ToggleCollapse()
     {
         await OnToggleCollapse.InvokeAsync();
     }
 
-    private async Task ToggleThemeAsync()
-    {
-        try
-        {
-            var next = await JS.InvokeAsync<string>("ProcurePilotTheme.toggleTheme");
-            _isDark = next == "dark";
-            await OnThemeChanged.InvokeAsync(_isDark);
-        }
-        catch
-        {
-            _isDark = !_isDark;
-        }
-    }
+    private Task ToggleTheme() => OnThemeToggle.InvokeAsync();
 }

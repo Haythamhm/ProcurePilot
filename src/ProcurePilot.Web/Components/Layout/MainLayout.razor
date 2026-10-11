@@ -3,7 +3,10 @@
 
 <div class="page @(_isSidebarCollapsed ? "sidebar-collapsed" : "")">
     <aside class="sidebar @(_isSidebarCollapsed ? "collapsed" : "")" aria-label="Navigation principale">
-        <NavMenu IsCollapsed="_isSidebarCollapsed" OnToggleCollapse="ToggleSidebar" OnThemeChanged="HandleThemeChanged" />
+        <NavMenu IsCollapsed="_isSidebarCollapsed"
+                 IsDarkMode="_isDarkMode"
+                 OnToggleCollapse="ToggleSidebar"
+                 OnThemeToggle="ToggleThemeAsync" />
     </aside>
 
     <div class="main-wrapper">
@@ -15,7 +18,12 @@
             </div>
 
             <div class="top-row-right">
-                <button type="button" class="top-theme-btn" @onclick="ToggleThemeFromTop" title="Basculer le thème (clair / sombre)" aria-label="Basculer le thème">
+                <button type="button"
+                        class="top-theme-btn"
+                        @onclick="ToggleThemeAsync"
+                        title="@(_isDarkMode ? "Activer le mode clair" : "Activer le mode sombre")"
+                        aria-label="@(_isDarkMode ? "Activer le mode clair" : "Activer le mode sombre")"
+                        aria-pressed="@(_isDarkMode ? "true" : "false")">
                     @if (_isDarkMode)
                     {
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -108,7 +116,7 @@
         }
     }
 
-    private async Task ToggleThemeFromTop()
+    private async Task ToggleThemeAsync()
     {
         try
         {
@@ -121,8 +129,4 @@
         }
     }
 
-    private void HandleThemeChanged(bool isDark)
-    {
-        _isDarkMode = isDark;
-    }
 }

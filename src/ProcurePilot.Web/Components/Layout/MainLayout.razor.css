@@ -4,7 +4,7 @@
     background: var(--pp-bg-canvas);
     color: var(--pp-text-main);
     position: relative;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 .sidebar {
@@ -14,6 +14,10 @@
     background: var(--pp-bg-sidebar);
     transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), flex-basis 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 100;
+    align-self: flex-start;
+    height: 100dvh;
+    position: sticky;
+    top: 0;
 }
 
 .sidebar.collapsed {
@@ -37,11 +41,12 @@
     display: flex;
     gap: 1rem;
     height: 4.25rem;
+    flex: 0 0 4.25rem;
     justify-content: space-between;
     padding: 0 clamp(1rem, 3vw, 2.5rem);
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 90;
 }
 
 .top-row-left {
@@ -213,5 +218,7 @@ article.content {
         flex: 0 0 auto;
         width: 100%;
         min-width: 100%;
+        height: auto;
+        position: static;
     }
 }

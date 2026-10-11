@@ -1,4 +1,4 @@
-<section class="system-state" aria-labelledby="@TitleId">
+<section class="system-state" aria-labelledby="@TitleId" role="@Role" aria-live="@AriaLive">
     <div class="system-state__marker" aria-hidden="true">@Marker</div>
     <div class="system-state__content">
         <p class="eyebrow">@Eyebrow</p>
@@ -39,6 +39,12 @@
 
     [Parameter]
     public RenderFragment? Actions { get; set; }
+
+    [Parameter]
+    public string? Role { get; set; }
+
+    [Parameter]
+    public string? AriaLive { get; set; }
 
     private string TitleId { get; } = $"system-state-{Guid.NewGuid():N}";
 }

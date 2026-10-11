@@ -12,7 +12,7 @@
 
 @if (_isLoading)
 {
-    <div class="review-state" role="status" aria-live="polite">
+    <div class="review-state deferred-loading" role="status" aria-live="polite">
         <span class="review-spinner" aria-hidden="true"></span>
         <div><strong>Loading extraction review</strong><p>Retrieving tenant-scoped invoice data…</p></div>
     </div>
@@ -22,8 +22,13 @@ else if (_loadFailed)
     <SystemState Eyebrow="Invoice ingestion"
                  Marker="!"
                  Title="Review unavailable"
-                 Description="The extraction review could not be loaded. Try again later.">
-        <Actions><a class="btn btn-outline-secondary" href="/">Return to dashboard</a></Actions>
+                 Description="The extraction review could not be loaded. No invoice data was changed."
+                 Role="alert"
+                 AriaLive="assertive">
+        <Actions>
+            <a class="btn btn-primary" href="@CurrentUrl">Try again</a>
+            <a class="btn btn-outline-secondary" href="/">Return to dashboard</a>
+        </Actions>
     </SystemState>
 }
 else if (_review is null)
@@ -206,6 +211,8 @@ else
 @code {
     [Parameter]
     public Guid InvoiceId { get; set; }
+
+    private string CurrentUrl => $"/invoices/{InvoiceId}/review";
 
     private InvoiceReviewReadModel? _review;
     private ReviewFormModel _form = new();
