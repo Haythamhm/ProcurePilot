@@ -15,6 +15,7 @@ using ProcurePilot.Application.Dashboard;
 using ProcurePilot.Application.Exceptions;
 using ProcurePilot.Application.AI.Evaluations;
 using ProcurePilot.Application.Exceptions.Explanation;
+using ProcurePilot.Application.Security;
 using ProcurePilot.Infrastructure.Exceptions;
 using ProcurePilot.Infrastructure.Invoices;
 using ProcurePilot.Infrastructure.Matching;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         ArgumentException.ThrowIfNullOrWhiteSpace(invoiceBlobConnectionString);
 
         services.TryAddScoped<ITenantContext, NullTenantContext>();
+        services.TryAddScoped<ICurrentUserContext, NullCurrentUserContext>();
 
         services.AddDbContext<ProcurePilotDbContext>(options =>
             options.UseNpgsql(
@@ -43,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkspaceDashboardQueries, WorkspaceDashboardQueries>();
         services.AddScoped<IExceptionWorkQueueQueries, ExceptionWorkQueueQueries>();
         services.AddScoped<IExceptionWorkspaceQueries, ExceptionWorkspaceQueries>();
+        services.AddScoped<IExceptionOverrideService, ExceptionOverrideService>();
         services.AddScoped<IAiAnalysisService, AiAnalysisService>();
         services.AddSingleton<IAiEvaluationRunner, AiEvaluationRunner>();
         services.AddSingleton(TimeProvider.System);

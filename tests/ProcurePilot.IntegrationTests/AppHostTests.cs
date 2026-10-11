@@ -14,6 +14,7 @@ using ProcurePilot.Application.Invoices.Review;
 using ProcurePilot.Application.Matching;
 using ProcurePilot.Application.Exceptions;
 using ProcurePilot.Application.Exceptions.Explanation;
+using ProcurePilot.Application.Security;
 using ProcurePilot.Domain.Exceptions;
 using ProcurePilot.Domain.Invoices;
 using ProcurePilot.Domain.Matching;
@@ -114,6 +115,9 @@ public sealed class AppHostTests
         Assert.Contains(
             appliedMigrations,
             migration => migration.EndsWith("_AddExceptionQueuePrioritization", StringComparison.Ordinal));
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_AddAuthorizedExceptionOverride", StringComparison.Ordinal));
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         var pendingMigrations = await dbContext.Database
@@ -329,6 +333,9 @@ public sealed class AppHostTests
         queueServices.AddLogging();
         queueServices.AddDataProtection();
         queueServices.AddScoped<ITenantContext>(_ => new TestTenantContext(bootstrapTenant.Id));
+        queueServices.AddScoped<ICurrentUserContext>(_ => new TestCurrentUserContext(
+            bootstrapUser.Id,
+            ProcurePilotPermissions.ExceptionOverride));
         queueServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
         queueServices.AddScoped<IExceptionExplanationService>(_ => new StubExplanationService(
             new ExceptionExplanationResult(
@@ -432,10 +439,79 @@ public sealed class AppHostTests
         persistedExceptionCase.TransitionTo(
             ExceptionCaseStatus.Open,
             persistedExceptionCase.OpenedAtUtc);
-        persistedExceptionCase.TransitionTo(
-            ExceptionCaseStatus.Resolved,
-            persistedExceptionCase.OpenedAtUtc.AddMinutes(1));
         await invoiceReadContext.SaveChangesAsync(cancellationToken);
+
+        var unauthorizedServices = new ServiceCollection();
+        unauthorizedServices.AddLogging();
+        unauthorizedServices.AddDataProtection();
+        unauthorizedServices.AddScoped<ITenantContext>(_ => new TestTenantContext(bootstrapTenant.Id));
+        unauthorizedServices.AddScoped<ICurrentUserContext>(_ => new TestCurrentUserContext(
+            bootstrapUser.Id));
+        unauthorizedServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
+        await using (var unauthorizedProvider = unauthorizedServices.BuildServiceProvider())
+        await using (var unauthorizedScope = unauthorizedProvider.CreateAsyncScope())
+        {
+            var unauthorizedResult = await unauthorizedScope.ServiceProvider
+                .GetRequiredService<IExceptionOverrideService>()
+                .OverrideAsync(
+                    new ExceptionOverrideCommand(
+                        persistedExceptionCase.Id,
+                        "Attempt without permission"),
+                    cancellationToken);
+            Assert.Equal(ExceptionOverrideOutcome.Forbidden, unauthorizedResult.Outcome);
+        }
+
+        await using (var overrideProvider = queueServices.BuildServiceProvider())
+        await using (var overrideScope = overrideProvider.CreateAsyncScope())
+        {
+            var overrideService = overrideScope.ServiceProvider
+                .GetRequiredService<IExceptionOverrideService>();
+
+            var invalidReason = await overrideService.OverrideAsync(
+                new ExceptionOverrideCommand(persistedExceptionCase.Id, "   "),
+                cancellationToken);
+            Assert.Equal(ExceptionOverrideOutcome.InvalidReason, invalidReason.Outcome);
+
+            var successfulOverride = await overrideService.OverrideAsync(
+                new ExceptionOverrideCommand(
+                    persistedExceptionCase.Id,
+                    "Invoice variance approved by the AP manager."),
+                cancellationToken);
+            Assert.Equal(ExceptionOverrideOutcome.Succeeded, successfulOverride.Outcome);
+            Assert.NotNull(successfulOverride.ResolutionId);
+
+            var duplicateOverride = await overrideService.OverrideAsync(
+                new ExceptionOverrideCommand(
+                    persistedExceptionCase.Id,
+                    "Duplicate attempt"),
+                cancellationToken);
+            Assert.Equal(ExceptionOverrideOutcome.InvalidState, duplicateOverride.Outcome);
+        }
+
+        await using (var overrideReadContext = new ProcurePilotDbContext(
+                         options,
+                         new TestTenantContext(bootstrapTenant.Id)))
+        {
+            var overriddenCase = await overrideReadContext.ExceptionCases
+                .SingleAsync(value => value.Id == persistedExceptionCase.Id, cancellationToken);
+            Assert.Equal(ExceptionCaseStatus.Resolved, overriddenCase.Status);
+
+            var resolution = await overrideReadContext.Resolutions
+                .SingleAsync(cancellationToken);
+            Assert.Equal(ResolutionType.Override, resolution.Type);
+            Assert.Equal(bootstrapUser.Id, resolution.ActorUserId);
+            Assert.Equal(ExceptionCaseStatus.Open, resolution.PreviousStatus);
+            Assert.Equal(ExceptionCaseStatus.Resolved, resolution.NewStatus);
+            Assert.Equal("Invoice variance approved by the AP manager.", resolution.Reason);
+
+            var auditEvent = await overrideReadContext.AuditEvents
+                .SingleAsync(cancellationToken);
+            Assert.Equal(AuditEventAction.ExceptionOverride, auditEvent.Action);
+            Assert.Equal(resolution.ExceptionCaseId, auditEvent.ExceptionCaseId);
+            Assert.Equal(resolution.ActorUserId, auditEvent.ActorUserId);
+            Assert.Equal(resolution.Reason, auditEvent.Reason);
+            Assert.Equal(resolution.ResolvedAtUtc, auditEvent.OccurredAtUtc);
+        }
 
         await using (var resolvedQueueProvider = queueServices.BuildServiceProvider())
         await using (var resolvedQueueScope = resolvedQueueProvider.CreateAsyncScope())
@@ -450,6 +526,9 @@ public sealed class AppHostTests
         otherQueueServices.AddLogging();
         otherQueueServices.AddDataProtection();
         otherQueueServices.AddScoped<ITenantContext>(_ => new TestTenantContext(otherTenant.Id));
+        otherQueueServices.AddScoped<ICurrentUserContext>(_ => new TestCurrentUserContext(
+            bootstrapUser.Id,
+            ProcurePilotPermissions.ExceptionOverride));
         otherQueueServices.AddInfrastructure(connectionString, invoiceBlobConnectionString);
         await using (var otherQueueProvider = otherQueueServices.BuildServiceProvider())
         await using (var otherQueueScope = otherQueueProvider.CreateAsyncScope())
@@ -470,6 +549,15 @@ public sealed class AppHostTests
                 persistedExceptionCase.Id,
                 cancellationToken);
             Assert.Null(crossTenantAnalysis);
+
+            var crossTenantOverride = await otherQueueScope.ServiceProvider
+                .GetRequiredService<IExceptionOverrideService>()
+                .OverrideAsync(
+                    new ExceptionOverrideCommand(
+                        persistedExceptionCase.Id,
+                        "Cross-tenant attempt"),
+                    cancellationToken);
+            Assert.Equal(ExceptionOverrideOutcome.Forbidden, crossTenantOverride.Outcome);
         }
         var uploadServices = new ServiceCollection();
         uploadServices.AddLogging();
@@ -859,6 +947,20 @@ public sealed class AppHostTests
 
         public Guid RequireTenantId() => TenantId
             ?? throw new InvalidOperationException("A tenant is required for this test.");
+    }
+
+    private sealed class TestCurrentUserContext(
+        Guid? userId,
+        params string[] permissions) : ICurrentUserContext
+    {
+        private readonly CurrentUserSnapshot _snapshot = new(
+            userId,
+            userId.HasValue,
+            permissions.ToHashSet(StringComparer.Ordinal));
+
+        public Task<CurrentUserSnapshot> GetAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_snapshot);
     }
 
     private sealed class TestTimeProvider(DateTimeOffset utcNow) : TimeProvider

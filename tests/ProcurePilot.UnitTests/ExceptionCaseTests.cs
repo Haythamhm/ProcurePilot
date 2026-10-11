@@ -238,6 +238,86 @@ public sealed class ExceptionCaseTests
         Assert.Equal(openedAt, toleranceEvidence.RecordedAtUtc);
     }
 
+    [Theory]
+    [InlineData(ExceptionCaseStatus.Open)]
+    [InlineData(ExceptionCaseStatus.WaitingAction)]
+    [InlineData(ExceptionCaseStatus.WaitingExternal)]
+    public void OverrideCreatesResolutionAndAuditAndResolvesCase(ExceptionCaseStatus sourceStatus)
+    {
+        var exceptionCase = CreateExceptionCase();
+        Transition(exceptionCase, ExceptionCaseStatus.Analyzing);
+        Transition(exceptionCase, ExceptionCaseStatus.Open);
+        if (sourceStatus is not ExceptionCaseStatus.Open)
+        {
+            Transition(exceptionCase, sourceStatus);
+        }
+
+        var actorUserId = Guid.NewGuid();
+        var resolvedAt = exceptionCase.OpenedAtUtc.AddMinutes(5);
+        var artifacts = exceptionCase.ApplyOverride(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            actorUserId,
+            "  AP manager approved the documented variance.  ",
+            resolvedAt);
+
+        Assert.Equal(ExceptionCaseStatus.Resolved, exceptionCase.Status);
+        Assert.Equal(resolvedAt, exceptionCase.ResolvedAtUtc);
+        Assert.Equal(ResolutionType.Override, artifacts.Resolution.Type);
+        Assert.Equal("AP manager approved the documented variance.", artifacts.Resolution.Reason);
+        Assert.Equal(actorUserId, artifacts.Resolution.ActorUserId);
+        Assert.Equal(sourceStatus, artifacts.Resolution.PreviousStatus);
+        Assert.Equal(ExceptionCaseStatus.Resolved, artifacts.Resolution.NewStatus);
+        Assert.Equal(AuditEventAction.ExceptionOverride, artifacts.AuditEvent.Action);
+        Assert.Equal(artifacts.Resolution.Reason, artifacts.AuditEvent.Reason);
+        Assert.Equal(sourceStatus, artifacts.AuditEvent.PreviousStatus);
+        Assert.Equal(ExceptionCaseStatus.Resolved, artifacts.AuditEvent.NewStatus);
+        Assert.Equal(resolvedAt, artifacts.AuditEvent.OccurredAtUtc);
+    }
+
+    [Fact]
+    public void OverrideRejectsBlankReasonWithoutChangingState()
+    {
+        var exceptionCase = CreateOpenExceptionCase();
+
+        Assert.Throws<ArgumentException>(() => exceptionCase.ApplyOverride(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "   ",
+            exceptionCase.OpenedAtUtc.AddMinutes(1)));
+
+        Assert.Equal(ExceptionCaseStatus.Open, exceptionCase.Status);
+        Assert.Null(exceptionCase.ResolvedAtUtc);
+    }
+
+    [Fact]
+    public void OverrideRejectsInvalidStateAndSecondResolution()
+    {
+        var newCase = CreateExceptionCase();
+        Assert.Throws<InvalidOperationException>(() => newCase.ApplyOverride(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Manual decision",
+            newCase.OpenedAtUtc.AddMinutes(1)));
+
+        var resolvedCase = CreateOpenExceptionCase();
+        resolvedCase.ApplyOverride(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "First decision",
+            resolvedCase.OpenedAtUtc.AddMinutes(1));
+
+        Assert.Throws<InvalidOperationException>(() => resolvedCase.ApplyOverride(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Duplicate decision",
+            resolvedCase.OpenedAtUtc.AddMinutes(2)));
+    }
+
     [Fact]
     public void EvidenceFactoryValidatesRequiredIdentifiers()
     {
@@ -278,6 +358,14 @@ public sealed class ExceptionCaseTests
             fixture.MatchResult,
             ExceptionSeverity.Medium,
             EvaluatedAtUtc.AddMinutes(1));
+    }
+
+    private static ExceptionCase CreateOpenExceptionCase()
+    {
+        var exceptionCase = CreateExceptionCase();
+        Transition(exceptionCase, ExceptionCaseStatus.Analyzing);
+        Transition(exceptionCase, ExceptionCaseStatus.Open);
+        return exceptionCase;
     }
 
     private static Fixture CreateFixture(bool failed)

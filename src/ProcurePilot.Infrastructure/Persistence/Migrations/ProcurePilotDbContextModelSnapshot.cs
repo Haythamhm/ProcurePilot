@@ -242,6 +242,60 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ProcurePilot.Domain.Exceptions.AuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExceptionCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    b.HasIndex("TenantId", "ActorUserId");
+
+                    b.HasIndex("TenantId", "ExceptionCaseId", "OccurredAtUtc");
+
+                    b.ToTable("AuditEvents", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AuditEvents_Action", "\"Action\" = 'ExceptionOverride'");
+
+                            t.HasCheckConstraint("CK_AuditEvents_State", "\"PreviousStatus\" IN ('Open', 'WaitingAction', 'WaitingExternal') AND \"NewStatus\" = 'Resolved'");
+                        });
+                });
+
             modelBuilder.Entity("ProcurePilot.Domain.Exceptions.ExceptionCase", b =>
                 {
                     b.Property<Guid>("Id")
@@ -359,6 +413,61 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("CK_ExceptionCaseEvidences_Type", "\"Type\" IN ('InvoicePrice', 'PurchaseOrderPrice', 'PriceVariance', 'RuleTolerance')");
 
                             t.HasCheckConstraint("CK_ExceptionCaseEvidences_TypedReference", "(\"Type\" = 'InvoicePrice' AND \"InvoiceLineId\" IS NOT NULL AND \"PurchaseOrderLineId\" IS NULL AND \"MatchResultId\" IS NULL AND \"MatchingRuleId\" IS NULL) OR (\"Type\" = 'PurchaseOrderPrice' AND \"PurchaseOrderLineId\" IS NOT NULL AND \"InvoiceLineId\" IS NULL AND \"MatchResultId\" IS NULL AND \"MatchingRuleId\" IS NULL) OR (\"Type\" = 'PriceVariance' AND \"MatchResultId\" IS NOT NULL AND \"InvoiceLineId\" IS NULL AND \"PurchaseOrderLineId\" IS NULL AND \"MatchingRuleId\" IS NULL) OR (\"Type\" = 'RuleTolerance' AND \"MatchingRuleId\" IS NOT NULL AND \"InvoiceLineId\" IS NULL AND \"PurchaseOrderLineId\" IS NULL AND \"MatchResultId\" IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("ProcurePilot.Domain.Exceptions.Resolution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExceptionCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("ResolvedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    b.HasIndex("TenantId", "ActorUserId");
+
+                    b.HasIndex("TenantId", "ExceptionCaseId")
+                        .IsUnique();
+
+                    b.ToTable("Resolutions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Resolutions_State", "\"PreviousStatus\" IN ('Open', 'WaitingAction', 'WaitingExternal') AND \"NewStatus\" = 'Resolved'");
+
+                            t.HasCheckConstraint("CK_Resolutions_Type", "\"Type\" = 'Override'");
                         });
                 });
 
@@ -931,6 +1040,29 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ProcurePilot.Domain.Exceptions.AuditEvent", b =>
+                {
+                    b.HasOne("ProcurePilot.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ActorUserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Domain.Exceptions.ExceptionCase", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ExceptionCaseId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ProcurePilot.Domain.Exceptions.ExceptionCase", b =>
                 {
                     b.HasOne("ProcurePilot.Domain.Tenancy.Tenant", null)
@@ -1005,6 +1137,29 @@ namespace ProcurePilot.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TenantId", "PurchaseOrderLineId")
                         .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("ProcurePilot.Domain.Exceptions.Resolution", b =>
+                {
+                    b.HasOne("ProcurePilot.Domain.Tenancy.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "ActorUserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProcurePilot.Domain.Exceptions.ExceptionCase", null)
+                        .WithOne()
+                        .HasForeignKey("ProcurePilot.Domain.Exceptions.Resolution", "TenantId", "ExceptionCaseId")
+                        .HasPrincipalKey("ProcurePilot.Domain.Exceptions.ExceptionCase", "TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ProcurePilot.Domain.Invoices.Invoice", b =>

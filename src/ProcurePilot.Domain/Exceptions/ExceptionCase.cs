@@ -91,6 +91,44 @@ public sealed class ExceptionCase : ITenantScopedEntity
 
     public IReadOnlyCollection<AiAnalysis> Analyses => _analyses.AsReadOnly();
 
+    public ExceptionOverrideArtifacts ApplyOverride(
+        Guid resolutionId,
+        Guid auditEventId,
+        Guid actorUserId,
+        string reason,
+        DateTimeOffset occurredAtUtc)
+    {
+        if (Status is not (ExceptionCaseStatus.Open
+            or ExceptionCaseStatus.WaitingAction
+            or ExceptionCaseStatus.WaitingExternal))
+        {
+            throw new InvalidOperationException(
+                $"Exception case cannot be overridden from {Status}.");
+        }
+
+        var previousStatus = Status;
+        var occurredAt = occurredAtUtc.ToUniversalTime();
+        var resolution = new Resolution(
+            resolutionId,
+            TenantId,
+            Id,
+            actorUserId,
+            reason,
+            previousStatus,
+            occurredAt);
+        var auditEvent = new AuditEvent(
+            auditEventId,
+            TenantId,
+            Id,
+            actorUserId,
+            resolution.Reason,
+            previousStatus,
+            occurredAt);
+
+        TransitionTo(ExceptionCaseStatus.Resolved, occurredAt);
+        return new ExceptionOverrideArtifacts(resolution, auditEvent);
+    }
+
     public void AddAnalysis(AiAnalysis analysis)
     {
         ArgumentNullException.ThrowIfNull(analysis);
@@ -234,3 +272,7 @@ public sealed class ExceptionCase : ITenantScopedEntity
         }
     }
 }
+
+public sealed record ExceptionOverrideArtifacts(
+    Resolution Resolution,
+    AuditEvent AuditEvent);

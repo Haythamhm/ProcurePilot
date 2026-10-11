@@ -8,4 +8,6 @@ public static class ProcurePilotPermissions
     public const string InvoiceReview = "Invoice.Review";
 
     public const string ExceptionView = "Exception.View";
+
+    public const string ExceptionOverride = "Exception.Override";
 }

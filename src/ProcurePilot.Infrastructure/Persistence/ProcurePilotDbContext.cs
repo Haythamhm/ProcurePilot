@@ -47,6 +47,10 @@ public sealed class ProcurePilotDbContext(
 
     public DbSet<AiAnalysis> AiAnalyses => Set<AiAnalysis>();
 
+    public DbSet<Resolution> Resolutions => Set<Resolution>();
+
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -542,6 +546,110 @@ public sealed class ProcurePilotDbContext(
                 .OnDelete(DeleteBehavior.Restrict);
 
             evidence.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(value => value.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Resolution>(resolution =>
+        {
+            resolution.ToTable("Resolutions", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_Resolutions_Type",
+                    "\"Type\" = 'Override'");
+                table.HasCheckConstraint(
+                    "CK_Resolutions_State",
+                    "\"PreviousStatus\" IN ('Open', 'WaitingAction', 'WaitingExternal') AND \"NewStatus\" = 'Resolved'");
+            });
+            resolution.HasKey(value => value.Id);
+            resolution.HasAlternateKey(value => new { value.TenantId, value.Id });
+            resolution.Property(value => value.TenantId).IsRequired();
+            resolution.Property(value => value.ExceptionCaseId).IsRequired();
+            resolution.Property(value => value.Type)
+                .HasConversion<string>()
+                .HasMaxLength(Resolution.TypeMaxLength)
+                .IsRequired();
+            resolution.Property(value => value.Reason)
+                .HasMaxLength(Resolution.ReasonMaxLength)
+                .IsRequired();
+            resolution.Property(value => value.ActorUserId).IsRequired();
+            resolution.Property(value => value.PreviousStatus)
+                .HasConversion<string>()
+                .HasMaxLength(ExceptionCase.StatusMaxLength)
+                .IsRequired();
+            resolution.Property(value => value.NewStatus)
+                .HasConversion<string>()
+                .HasMaxLength(ExceptionCase.StatusMaxLength)
+                .IsRequired();
+            resolution.Property(value => value.ResolvedAtUtc).IsRequired();
+            resolution.HasIndex(value => new { value.TenantId, value.ExceptionCaseId })
+                .IsUnique();
+            resolution.HasOne<ExceptionCase>()
+                .WithOne()
+                .HasForeignKey<Resolution>(value => new { value.TenantId, value.ExceptionCaseId })
+                .HasPrincipalKey<ExceptionCase>(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            resolution.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, UserId = value.ActorUserId })
+                .HasPrincipalKey(value => new { value.TenantId, UserId = value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            resolution.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(value => value.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AuditEvent>(auditEvent =>
+        {
+            auditEvent.ToTable("AuditEvents", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_AuditEvents_Action",
+                    "\"Action\" = 'ExceptionOverride'");
+                table.HasCheckConstraint(
+                    "CK_AuditEvents_State",
+                    "\"PreviousStatus\" IN ('Open', 'WaitingAction', 'WaitingExternal') AND \"NewStatus\" = 'Resolved'");
+            });
+            auditEvent.HasKey(value => value.Id);
+            auditEvent.HasAlternateKey(value => new { value.TenantId, value.Id });
+            auditEvent.Property(value => value.TenantId).IsRequired();
+            auditEvent.Property(value => value.ExceptionCaseId).IsRequired();
+            auditEvent.Property(value => value.Action)
+                .HasConversion<string>()
+                .HasMaxLength(AuditEvent.ActionMaxLength)
+                .IsRequired();
+            auditEvent.Property(value => value.ActorUserId).IsRequired();
+            auditEvent.Property(value => value.Reason)
+                .HasMaxLength(Resolution.ReasonMaxLength)
+                .IsRequired();
+            auditEvent.Property(value => value.PreviousStatus)
+                .HasConversion<string>()
+                .HasMaxLength(ExceptionCase.StatusMaxLength)
+                .IsRequired();
+            auditEvent.Property(value => value.NewStatus)
+                .HasConversion<string>()
+                .HasMaxLength(ExceptionCase.StatusMaxLength)
+                .IsRequired();
+            auditEvent.Property(value => value.OccurredAtUtc).IsRequired();
+            auditEvent.HasIndex(value => new
+            {
+                value.TenantId,
+                value.ExceptionCaseId,
+                value.OccurredAtUtc
+            });
+            auditEvent.HasOne<ExceptionCase>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.ExceptionCaseId })
+                .HasPrincipalKey(value => new { value.TenantId, value.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            auditEvent.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, UserId = value.ActorUserId })
+                .HasPrincipalKey(value => new { value.TenantId, UserId = value.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+            auditEvent.HasOne<Tenant>()
                 .WithMany()
                 .HasForeignKey(value => value.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);

@@ -24,3 +24,4 @@ An ADR must explain context, the decision, alternatives, consequences, security/
 | [ADR-STORAGE-004](ADR-STORAGE-004.md) | Accepted | PP-9 | Azure Blob-compatible invoice document storage |
 | [ADR-EXCEPTION-005](ADR-EXCEPTION-005.md) | Accepted | PP-22 | Typed relational evidence references for price-variance exception cases |
 | [ADR-AI-006](ADR-AI-006.md) | Accepted | PP-26 | Persistence of AiAnalysis and execution telemetry for exception cases |
+| [ADR-EXCEPTION-007](ADR-EXCEPTION-007.md) | Accepted | PP-28 | Atomic authorized override resolution and audit |

@@ -68,7 +68,8 @@ public sealed class IdentityBootstrapper(
         {
             ProcurePilotPermissions.InvoiceUpload,
             ProcurePilotPermissions.InvoiceReview,
-            ProcurePilotPermissions.ExceptionView
+            ProcurePilotPermissions.ExceptionView,
+            ProcurePilotPermissions.ExceptionOverride
         };
         foreach (var permission in requiredPermissions)
         {

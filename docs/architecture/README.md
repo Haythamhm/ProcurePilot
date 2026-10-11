@@ -23,3 +23,4 @@ Implemented architecture notes:
 - [AI chat client](ai-chat-client.md) — provider-neutral Microsoft.Extensions.AI composition root and configuration.
 - [AI exception explanation](ai-exception-explanation.md) — versioned prompt and structured explanation service for price-variance exceptions.
 - [AI analysis persistence and observability](ai-analysis-persistence.md) — relational persistence and OpenTelemetry execution telemetry for AI analyses.
+- [Authorized exception override](exception-override.md) — permission-guarded human override with atomic resolution and audit persistence.

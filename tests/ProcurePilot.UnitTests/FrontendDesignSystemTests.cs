@@ -159,7 +159,9 @@ public sealed partial class FrontendDesignSystemTests
         Assert.Contains("AuthorizationPolicies.ExceptionView", workspace, StringComparison.Ordinal);
         Assert.Contains("aria-live=\"polite\"", workspace, StringComparison.Ordinal);
         Assert.Contains("Exception not found", workspace, StringComparison.Ordinal);
-        Assert.Contains("read only", workspace, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("AuthorizationPolicies.ExceptionOverride", workspace, StringComparison.Ordinal);
+        Assert.Contains("IExceptionOverrideService", workspace, StringComparison.Ordinal);
+        Assert.Contains("human reason", workspace, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("<dl>", comparison, StringComparison.Ordinal);
         Assert.Contains("Allowed tolerance", comparison, StringComparison.Ordinal);
         Assert.Contains("Math.Abs(Model.VariancePercent)", comparison, StringComparison.Ordinal);

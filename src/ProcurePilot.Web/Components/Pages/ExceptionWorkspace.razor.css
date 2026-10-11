@@ -116,6 +116,81 @@
     padding-left: 0.75rem;
 }
 
+.override-panel {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: minmax(13rem, 0.75fr) minmax(20rem, 1.25fr);
+    margin-top: 1rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.override-copy h2 {
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.override-copy p:last-child {
+    color: var(--pp-primary);
+    font-size: 0.85rem;
+    margin: 0.35rem 0 0;
+}
+
+.override-panel form {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.override-panel label {
+    color: var(--pp-ink);
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.override-panel textarea {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 0.75rem;
+    color: var(--pp-ink);
+    min-height: 6.5rem;
+    padding: 0.75rem;
+    resize: vertical;
+}
+
+.override-panel textarea:focus-visible {
+    outline: 3px solid rgb(57 72 103 / 25%);
+    outline-offset: 2px;
+}
+
+.override-footer {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.override-footer small {
+    color: var(--pp-primary);
+}
+
+.override-message {
+    border-left: 3px solid var(--pp-primary);
+    font-size: 0.85rem;
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+}
+
+.override-message.success {
+    background: rgb(57 72 103 / 10%);
+}
+
+.override-message.error {
+    background: rgb(155 164 181 / 18%);
+}
+
 .exception-skeleton {
     display: grid;
     gap: 1rem;
@@ -242,6 +317,10 @@
     }
 
     .case-context {
+        grid-template-columns: 1fr;
+    }
+
+    .override-panel {
         grid-template-columns: 1fr;
     }
 
