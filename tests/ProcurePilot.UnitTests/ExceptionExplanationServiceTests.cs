@@ -346,7 +346,8 @@ public sealed class ExceptionExplanationServiceTests
                     SourceReference: "PO-4401:1 -> INV-2026-901:1",
                     ValueText: "+25.00%",
                     RecordedAtUtc: DateTimeOffset.UtcNow)
-            ]);
+            ],
+            AuditEvents: []);
 
         var request = ExceptionExplanationRequest.FromWorkspaceModel(SampleTenantId, workspaceModel);
 

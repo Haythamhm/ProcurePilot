@@ -107,6 +107,48 @@ else
         <p>No automated approval or financial decision is available. Every override requires explicit permission, a human reason and an audit record.</p>
     </section>
 
+    <section class="audit-timeline" aria-labelledby="audit-timeline-title">
+        <header class="audit-timeline-heading">
+            <div>
+                <p class="card-kicker">Accountability</p>
+                <h2 id="audit-timeline-title">Activity history</h2>
+            </div>
+            <span class="audit-count">@_workspace.AuditEvents.Count recorded</span>
+        </header>
+
+        @if (_workspace.AuditEvents.Count == 0)
+        {
+            <div class="audit-empty" role="status">
+                <strong>No sensitive actions recorded</strong>
+                <span>This case has no persisted audit events yet.</span>
+            </div>
+        }
+        else
+        {
+            <ol class="audit-event-list" aria-label="Case audit events, newest first">
+                @foreach (var auditEvent in _workspace.AuditEvents)
+                {
+                    <li>
+                        <article class="audit-event">
+                            <div class="audit-marker" aria-hidden="true"></div>
+                            <div class="audit-event-body">
+                                <div class="audit-event-lead">
+                                    <div>
+                                        <span class="audit-action">@AuditActionLabel(auditEvent.Action)</span>
+                                        <strong>@StatusLabel(auditEvent.PreviousStatus) <span aria-hidden="true">→</span><span class="visually-hidden">to</span> @StatusLabel(auditEvent.NewStatus)</strong>
+                                    </div>
+                                    <time datetime="@auditEvent.OccurredAtUtc.ToString("O")">@auditEvent.OccurredAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</time>
+                                </div>
+                                <p class="audit-reason">@auditEvent.Reason</p>
+                                <p class="audit-actor">Recorded by <strong>@auditEvent.ActorDisplayName</strong></p>
+                            </div>
+                        </article>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+
     <AuthorizeView Policy="@AuthorizationPolicies.ExceptionOverride">
         <Authorized Context="overrideAuthorization">
             @if (CanOverride)
@@ -246,6 +288,9 @@ else
     }
 
     private static string TypeLabel(string value) => value is "PriceVariance" ? "Price variance" : value;
+    private static string AuditActionLabel(string value) => value is "ExceptionOverride"
+        ? "Exception override"
+        : value;
     private static string StatusLabel(string value) => value switch
     {
         "WaitingAction" => "Waiting for action",
