@@ -116,6 +116,125 @@
     padding-left: 0.75rem;
 }
 
+.audit-timeline {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    margin-top: 1rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.audit-timeline-heading,
+.audit-event-lead {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.audit-timeline-heading h2 {
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.audit-count {
+    border: 1px solid var(--pp-muted);
+    border-radius: 999px;
+    color: var(--pp-primary);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    padding: 0.3rem 0.65rem;
+}
+
+.audit-empty {
+    background: rgb(155 164 181 / 10%);
+    border: 1px dashed var(--pp-muted);
+    border-radius: 0.75rem;
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 1rem;
+    padding: 1.25rem;
+}
+
+.audit-empty span {
+    color: var(--pp-primary);
+    font-size: 0.82rem;
+}
+
+.audit-event-list {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+}
+
+.audit-event-list li + li {
+    margin-top: 0.25rem;
+}
+
+.audit-event {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: 0.75rem minmax(0, 1fr);
+    padding: 0.75rem 0;
+}
+
+.audit-marker {
+    background: var(--pp-primary);
+    border: 3px solid var(--pp-surface);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--pp-muted);
+    height: 0.75rem;
+    margin-top: 0.25rem;
+    width: 0.75rem;
+}
+
+.audit-event-body {
+    border-bottom: 1px solid var(--pp-muted);
+    padding: 0 0 1rem;
+}
+
+.audit-event-list li:last-child .audit-event-body {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.audit-action {
+    color: var(--pp-primary);
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+}
+
+.audit-event-lead strong {
+    font-size: 0.92rem;
+}
+
+.audit-event-lead time {
+    color: var(--pp-primary);
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+}
+
+.audit-reason {
+    color: var(--pp-ink);
+    font-size: 0.88rem;
+    line-height: 1.55;
+    margin: 0.55rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+.audit-actor {
+    color: var(--pp-primary);
+    font-size: 0.75rem;
+    margin: 0.35rem 0 0;
+}
+
 .override-panel {
     background: var(--pp-surface);
     border: 1px solid var(--pp-muted);
@@ -322,6 +441,13 @@
 
     .override-panel {
         grid-template-columns: 1fr;
+    }
+
+    .audit-timeline-heading,
+    .audit-event-lead {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.5rem;
     }
 
     .exception-skeleton {

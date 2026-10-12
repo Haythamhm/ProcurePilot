@@ -144,6 +144,34 @@ internal sealed class ExceptionWorkspaceQueries(ProcurePilotDbContext dbContext)
                 e.RuleVersion))
             .ToList();
 
+        var rawAuditEvents = await (
+                from auditEvent in dbContext.AuditEvents.AsNoTracking()
+                where auditEvent.ExceptionCaseId == exceptionCaseId
+                join actor in dbContext.Users.AsNoTracking()
+                    on new { auditEvent.TenantId, UserId = auditEvent.ActorUserId }
+                    equals new { actor.TenantId, UserId = actor.Id }
+                orderby auditEvent.OccurredAtUtc descending, auditEvent.Id descending
+                select new
+                {
+                    auditEvent.Action,
+                    ActorDisplayName = actor.DisplayName,
+                    auditEvent.Reason,
+                    auditEvent.PreviousStatus,
+                    auditEvent.NewStatus,
+                    auditEvent.OccurredAtUtc
+                })
+            .ToListAsync(cancellationToken);
+
+        var auditEvents = rawAuditEvents
+            .Select(auditEvent => new ExceptionWorkspaceAuditEventReadModel(
+                auditEvent.Action.ToString(),
+                auditEvent.ActorDisplayName,
+                auditEvent.Reason,
+                auditEvent.PreviousStatus.ToString(),
+                auditEvent.NewStatus.ToString(),
+                auditEvent.OccurredAtUtc))
+            .ToList();
+
         return new ExceptionWorkspaceReadModel(
             projection.Id,
             projection.Type.ToString(),
@@ -171,7 +199,8 @@ internal sealed class ExceptionWorkspaceQueries(ProcurePilotDbContext dbContext)
             projection.MatchingRuleType.ToString(),
             projection.MatchingRuleVersion,
             projection.EvaluatedAtUtc,
-            evidences);
+            evidences,
+            auditEvents);
     }
 
     private static ExceptionWorkspaceEvidenceReadModel MapEvidence(

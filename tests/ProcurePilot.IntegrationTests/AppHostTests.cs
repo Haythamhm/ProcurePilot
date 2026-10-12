@@ -564,6 +564,18 @@ public sealed class AppHostTests
                 .GetRequiredService<IExceptionWorkQueueQueries>()
                 .ListAsync(ExceptionWorkQueueFilter.Resolved, cancellationToken: cancellationToken);
             Assert.Equal(persistedExceptionCase.Id, Assert.Single(resolvedQueue).Id);
+
+            var resolvedWorkspace = await resolvedQueueScope.ServiceProvider
+                .GetRequiredService<IExceptionWorkspaceQueries>()
+                .GetAsync(persistedExceptionCase.Id, cancellationToken);
+            Assert.NotNull(resolvedWorkspace);
+            var timelineEvent = Assert.Single(resolvedWorkspace.AuditEvents);
+            Assert.Equal(nameof(AuditEventAction.ExceptionOverride), timelineEvent.Action);
+            Assert.Equal(bootstrapUser.DisplayName, timelineEvent.ActorDisplayName);
+            Assert.Equal("Invoice variance approved by the AP manager.", timelineEvent.Reason);
+            Assert.Equal(nameof(ExceptionCaseStatus.Open), timelineEvent.PreviousStatus);
+            Assert.Equal(nameof(ExceptionCaseStatus.Resolved), timelineEvent.NewStatus);
+            Assert.Equal(resolvedWorkspace.ResolvedAtUtc, timelineEvent.OccurredAtUtc);
         }
 
         var otherQueueServices = new ServiceCollection();

@@ -14,6 +14,14 @@ public sealed record ExceptionWorkspaceEvidenceReadModel(
     string ValueText,
     DateTimeOffset RecordedAtUtc);
 
+public sealed record ExceptionWorkspaceAuditEventReadModel(
+    string Action,
+    string ActorDisplayName,
+    string Reason,
+    string PreviousStatus,
+    string NewStatus,
+    DateTimeOffset OccurredAtUtc);
+
 public sealed record ExceptionWorkspaceReadModel(
     Guid Id,
     string Type,
@@ -41,4 +49,5 @@ public sealed record ExceptionWorkspaceReadModel(
     string MatchingRuleType,
     int MatchingRuleVersion,
     DateTimeOffset EvaluatedAtUtc,
-    IReadOnlyList<ExceptionWorkspaceEvidenceReadModel> Evidences);
+    IReadOnlyList<ExceptionWorkspaceEvidenceReadModel> Evidences,
+    IReadOnlyList<ExceptionWorkspaceAuditEventReadModel> AuditEvents);

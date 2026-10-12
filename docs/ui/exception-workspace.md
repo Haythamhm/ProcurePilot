@@ -11,8 +11,10 @@ PP-21 introduces the read-only, tenant-scoped exception workspace at `/exception
 - The comparison presents facts in the order invoice → deterministic mismatch → purchase order, then shows operational ownership and lifecycle timestamps.
 - Factual evidence (PP-22) displays the four deterministic price and tolerance records captured at match failure, referencing their source entities without duplicating values.
 - Loading, retryable error, not-found, unassigned, missing source filename, open, and resolved states are explicit.
+- The PP-30 activity timeline projects persisted `AuditEvent` records only, newest first, with action, actor, state transition, reason, and timestamp. An unresolved case with no recorded sensitive action shows an explicit empty state rather than inferred history.
+- Timeline reads reuse the `Exception.View` boundary and composite tenant-aware actor join. The UI is read-only and exposes no audit mutation controls.
 - The three-column desktop comparison reflows to a variance-first two-column view and then a single column for narrow screens.
 
 ## Scope boundary
 
-AI analysis, comments, activity history, assignment commands, escalation, override, and resolution actions are intentionally excluded. Those capabilities belong to later backlog slices and are not represented by inactive or hard-coded controls.
+AI analysis display, comments, assignment commands, escalation, and additional resolution types are intentionally excluded. Those capabilities belong to later backlog slices and are not represented by inactive or hard-coded controls.

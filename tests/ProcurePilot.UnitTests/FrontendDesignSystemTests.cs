@@ -162,6 +162,10 @@ public sealed partial class FrontendDesignSystemTests
         Assert.Contains("AuthorizationPolicies.ExceptionOverride", workspace, StringComparison.Ordinal);
         Assert.Contains("IExceptionOverrideService", workspace, StringComparison.Ordinal);
         Assert.Contains("human reason", workspace, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("_workspace.AuditEvents", workspace, StringComparison.Ordinal);
+        Assert.Contains("<ol class=\"audit-event-list\"", workspace, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Case audit events, newest first\"", workspace, StringComparison.Ordinal);
+        Assert.Contains("No sensitive actions recorded", workspace, StringComparison.Ordinal);
         Assert.Contains("<dl>", comparison, StringComparison.Ordinal);
         Assert.Contains("Allowed tolerance", comparison, StringComparison.Ordinal);
         Assert.Contains("Math.Abs(Model.VariancePercent)", comparison, StringComparison.Ordinal);
