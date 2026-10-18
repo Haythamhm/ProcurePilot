@@ -49,4 +49,4 @@ jobs:
         run: dotnet build ProcurePilot.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test ProcurePilot.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+        run: dotnet test ProcurePilot.slnx --configuration Release --no-build -m:1 --logger "console;verbosity=normal"
