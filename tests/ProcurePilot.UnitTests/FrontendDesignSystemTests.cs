@@ -169,7 +169,8 @@ public sealed partial class FrontendDesignSystemTests
         Assert.Contains("<dl>", comparison, StringComparison.Ordinal);
         Assert.Contains("Allowed tolerance", comparison, StringComparison.Ordinal);
         Assert.Contains("Math.Abs(Model.VariancePercent)", comparison, StringComparison.Ordinal);
-        Assert.DoesNotContain("AI Analysis", workspace, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("IAiAnalysisService", workspace, StringComparison.Ordinal);
+        Assert.Contains("Evidence-based explanation", workspace, StringComparison.Ordinal);
         Assert.DoesNotContain("TODO", workspace, StringComparison.OrdinalIgnoreCase);
     }
 

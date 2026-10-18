@@ -42,6 +42,7 @@ public static class DependencyInjection
                 npgsql => npgsql.MigrationsAssembly(typeof(ProcurePilotDbContext).Assembly.FullName)));
 
         services.AddScoped<IPurchaseOrderQueries, PurchaseOrderQueries>();
+        services.AddScoped<IInvoiceMatchingWorkspaceQueries, InvoiceMatchingWorkspaceQueries>();
         services.AddScoped<IWorkspaceDashboardQueries, WorkspaceDashboardQueries>();
         services.AddScoped<IExceptionWorkQueueQueries, ExceptionWorkQueueQueries>();
         services.AddScoped<IExceptionWorkspaceQueries, ExceptionWorkspaceQueries>();

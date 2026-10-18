@@ -1,7 +1,9 @@
 @page "/exceptions/{ExceptionCaseId:guid}"
 @using ProcurePilot.Application.Exceptions
+@using ProcurePilot.Application.Exceptions.Explanation
 @inject IExceptionWorkspaceQueries WorkspaceQueries
 @inject IExceptionOverrideService OverrideService
+@inject IAiAnalysisService AiAnalysisService
 @inject TimeProvider TimeProvider
 @inject ILogger<ExceptionWorkspace> Logger
 
@@ -94,6 +96,49 @@ else
         }
     </section>
 
+    <section class="case-ai-analysis" aria-labelledby="case-ai-analysis-title">
+        <header>
+            <div><p class="card-kicker">Decision support · not an approval</p><h2 id="case-ai-analysis-title">Evidence-based explanation</h2></div>
+            <button class="btn btn-outline-secondary" type="button" @onclick="GenerateExplanationAsync" disabled="@_isGeneratingAnalysis">
+                @(_isGeneratingAnalysis ? "Preparing explanation…" : "Generate explanation")
+            </button>
+        </header>
+        <p class="ai-disclaimer">The explanation is grounded in this case’s persisted evidence. Verify each fact against the source before taking action.</p>
+        @if (_analysis is not null)
+        {
+            @if (_analysis.Status is "Success")
+            {
+                <div class="ai-analysis-content">
+                    <article><h3>Interpretation</h3><p>@(_analysis.Summary ?? "No summary was returned.")</p></article>
+                    @if (!string.IsNullOrWhiteSpace(_analysis.RootCauseCategory))
+                    {
+                        <article><h3>Possible cause</h3><p>@_analysis.RootCauseCategory</p></article>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_analysis.RecommendedAction))
+                    {
+                        <article><h3>Suggested next step</h3><p>@_analysis.RecommendedAction</p></article>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_analysis.RiskAssessment))
+                    {
+                        <article><h3>Risk to consider</h3><p>@_analysis.RiskAssessment</p></article>
+                    }
+                    <small>Model @_analysis.Model · prompt @_analysis.PromptVersion · @_analysis.CreatedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</small>
+                </div>
+            }
+            else
+            {
+                <div class="ai-analysis-unavailable" role="status">
+                    <strong>Explanation unavailable</strong>
+                    <p>AI analysis could not be completed. Review the persisted factual evidence above; matching and resolution remain deterministic and human-controlled.</p>
+                </div>
+            }
+        }
+        @if (!string.IsNullOrWhiteSpace(_analysisMessage))
+        {
+            <p class="override-message error" role="alert">@_analysisMessage</p>
+        }
+    </section>
+
     <section class="case-context" aria-labelledby="case-context-title">
         <div>
             <p class="card-kicker">Case context</p>
@@ -175,13 +220,13 @@ else
                             </button>
                         </div>
                     </EditForm>
-                    @if (!string.IsNullOrWhiteSpace(_overrideMessage))
-                    {
-                        <p class="override-message @(_overrideSucceeded ? "success" : "error")"
-                           role="@(_overrideSucceeded ? "status" : "alert")"
-                           aria-live="polite">@_overrideMessage</p>
-                    }
                 </section>
+            }
+            @if (!string.IsNullOrWhiteSpace(_overrideMessage))
+            {
+                <p class="override-message @(_overrideSucceeded ? "success" : "error")"
+                   role="@(_overrideSucceeded ? "status" : "alert")"
+                   aria-live="polite">@_overrideMessage</p>
             }
         </Authorized>
     </AuthorizeView>
@@ -193,6 +238,9 @@ else
     private bool _loadFailed;
     private bool _isSubmittingOverride;
     private bool _overrideSucceeded;
+    private bool _isGeneratingAnalysis;
+    private AiAnalysisReadModel? _analysis;
+    private string? _analysisMessage;
     private string? _overrideMessage;
     private readonly OverrideInput _overrideInput = new();
 
@@ -232,6 +280,9 @@ else
         try
         {
             _workspace = await WorkspaceQueries.GetAsync(ExceptionCaseId);
+            _analysis = _workspace is null
+                ? null
+                : await AiAnalysisService.GetLatestForCaseAsync(ExceptionCaseId);
         }
         catch (Exception exception)
         {
@@ -242,6 +293,30 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task GenerateExplanationAsync()
+    {
+        if (_workspace is null || _isGeneratingAnalysis)
+        {
+            return;
+        }
+
+        _isGeneratingAnalysis = true;
+        _analysisMessage = null;
+        try
+        {
+            _analysis = await AiAnalysisService.ExplainAndRecordAsync(ExceptionCaseId);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to generate explanation for exception {ExceptionCaseId}.", ExceptionCaseId);
+            _analysisMessage = "The explanation could not be generated. Persisted evidence and case state are unchanged.";
+        }
+        finally
+        {
+            _isGeneratingAnalysis = false;
         }
     }
 

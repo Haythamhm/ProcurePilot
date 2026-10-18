@@ -21,7 +21,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantContext, ClaimsTenantContext>();
 builder.Services.AddScoped<ICurrentUserContext, ClaimsCurrentUserContext>();
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents(options =>
+        options.DetailedErrors = builder.Environment.IsDevelopment());
 builder.Services.AddRazorPages();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddProcurePilotAiChat(builder.Configuration);

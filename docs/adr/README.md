@@ -25,3 +25,4 @@ An ADR must explain context, the decision, alternatives, consequences, security/
 | [ADR-EXCEPTION-005](ADR-EXCEPTION-005.md) | Accepted | PP-22 | Typed relational evidence references for price-variance exception cases |
 | [ADR-AI-006](ADR-AI-006.md) | Accepted | PP-26 | Persistence of AiAnalysis and execution telemetry for exception cases |
 | [ADR-EXCEPTION-007](ADR-EXCEPTION-007.md) | Accepted | PP-28 | Atomic authorized override resolution and audit |
+| [ADR-TESTING-008](ADR-TESTING-008.md) | Accepted | PP-31 | Browser-driven E2E coverage with Playwright .NET |

@@ -27,3 +27,5 @@ stateDiagram-v2
 ```
 
 All other transitions fail without mutating the aggregate. Entering `Resolved` records `ResolvedAtUtc`; `Closed` is terminal. Arithmetic, authorization, and future resolution actions remain outside this state transition method.
+
+When deterministic price matching fails, PP-31's matching orchestration creates the case with its four typed evidence references, then advances it through `New → Analyzing → Open` before the same database save. This is initial workflow preparation, not an AI decision or financial approval. A newly matched case is therefore immediately actionable in the open work queue; human override still requires its separate permission, reason, resolution and audit event. Cases created by other workflows retain their explicit initial `New` state until that workflow defines its own progression.
