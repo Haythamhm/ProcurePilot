@@ -175,36 +175,59 @@ public sealed class AppHostTests
         bootstrapTenantContext.MatchingRules.Add(currentMatchingRule);
         await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
 
-        var bootstrapInvoice = new Invoice(
-            Guid.NewGuid(),
-            bootstrapTenant.Id,
+        var bootstrapInvoice = Invoice.CreateProcessing(Guid.NewGuid(), bootstrapTenant.Id);
+        bootstrapInvoice.ConfirmExtraction(
             atlas.Id,
             $"INV-INTEGRATION-{Guid.NewGuid():N}",
             new DateOnly(2026, 10, 5),
             "USD",
-            131.25m);
-        var bootstrapInvoiceLine = bootstrapInvoice.AddLine(
-            Guid.NewGuid(),
-            1,
-            "Persisted invoice line",
-            1m,
-            131.25m);
+            131.25m,
+            [new ReviewedInvoiceLine(1, "Persisted invoice line", 1m, 131.25m)]);
+        var bootstrapInvoiceLine = Assert.Single(bootstrapInvoice.Lines);
         bootstrapTenantContext.Invoices.Add(bootstrapInvoice);
-        var withinToleranceInvoice = new Invoice(
-            Guid.NewGuid(),
-            bootstrapTenant.Id,
+        var withinToleranceInvoice = Invoice.CreateProcessing(Guid.NewGuid(), bootstrapTenant.Id);
+        withinToleranceInvoice.ConfirmExtraction(
             atlas.Id,
             $"INV-WITHIN-TOLERANCE-{Guid.NewGuid():N}",
             new DateOnly(2026, 10, 5),
             "USD",
-            127.50m);
-        var withinToleranceInvoiceLine = withinToleranceInvoice.AddLine(
+            127.50m,
+            [new ReviewedInvoiceLine(1, "Within tolerance invoice line", 1m, 127.50m)]);
+        var withinToleranceInvoiceLine = Assert.Single(withinToleranceInvoice.Lines);
+        bootstrapTenantContext.Invoices.Add(withinToleranceInvoice);
+
+        var processingInvoice = new Invoice(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            atlas.Id,
+            $"INV-PROCESSING-{Guid.NewGuid():N}",
+            new DateOnly(2026, 10, 5),
+            "USD",
+            131.25m);
+        var processingInvoiceLine = processingInvoice.AddLine(
             Guid.NewGuid(),
             1,
-            "Within tolerance invoice line",
+            "Unreviewed invoice line",
             1m,
-            127.50m);
-        bootstrapTenantContext.Invoices.Add(withinToleranceInvoice);
+            131.25m);
+        bootstrapTenantContext.Invoices.Add(processingInvoice);
+
+        var euroPurchaseOrder = new PurchaseOrder(
+            Guid.NewGuid(),
+            bootstrapTenant.Id,
+            atlas.Id,
+            $"PO-EUR-{Guid.NewGuid():N}",
+            new DateOnly(2026, 10, 1),
+            "EUR",
+            "Open",
+            125m);
+        var euroPurchaseOrderLine = euroPurchaseOrder.AddLine(
+            Guid.NewGuid(),
+            1,
+            "Euro-denominated item",
+            1m,
+            125m);
+        bootstrapTenantContext.PurchaseOrders.Add(euroPurchaseOrder);
         await bootstrapTenantContext.SaveChangesAsync(cancellationToken);
 
         var matchingServices = new ServiceCollection();
@@ -236,6 +259,24 @@ public sealed class AppHostTests
                     demoLine.Id,
                     initialMatchingRule.Id),
                 cancellationToken);
+
+            var unreviewedException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                matchingService.EvaluateAsync(
+                    new PriceVarianceMatchCommand(
+                        processingInvoiceLine.Id,
+                        demoLine.Id,
+                        initialMatchingRule.Id),
+                    cancellationToken));
+            Assert.Contains("reviewed invoice", unreviewedException.Message, StringComparison.OrdinalIgnoreCase);
+
+            var currencyException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                matchingService.EvaluateAsync(
+                    new PriceVarianceMatchCommand(
+                        bootstrapInvoiceLine.Id,
+                        euroPurchaseOrderLine.Id,
+                        initialMatchingRule.Id),
+                    cancellationToken));
+            Assert.Contains("currencies must match", currencyException.Message, StringComparison.OrdinalIgnoreCase);
         }
 
         Assert.Equal(MatchResultStatus.Failed, failedOutcome.Status);
@@ -274,7 +315,7 @@ public sealed class AppHostTests
         var persistedInvoice = await invoiceReadContext.Invoices
             .Include(invoice => invoice.Lines)
             .SingleAsync(invoice => invoice.Id == bootstrapInvoice.Id, cancellationToken);
-        Assert.Equal(InvoiceProcessingStatus.Processing, persistedInvoice.ProcessingStatus);
+        Assert.Equal(InvoiceProcessingStatus.Ready, persistedInvoice.ProcessingStatus);
         Assert.Equal("Persisted invoice line", Assert.Single(persistedInvoice.Lines).Description);
 
         var persistedMatchingRules = await invoiceReadContext.MatchingRules
@@ -313,7 +354,7 @@ public sealed class AppHostTests
         Assert.Equal(demoPurchaseOrder.Id, persistedExceptionCase.PurchaseOrderId);
         Assert.Equal(failedOutcome.MatchResultId, persistedExceptionCase.MatchResultId);
         Assert.Equal(MatchExceptionCode.PriceVariance, persistedExceptionCase.Type);
-        Assert.Equal(ExceptionCaseStatus.New, persistedExceptionCase.Status);
+        Assert.Equal(ExceptionCaseStatus.Open, persistedExceptionCase.Status);
         Assert.Equal(ExceptionSeverity.High, persistedExceptionCase.Severity);
         Assert.Null(persistedExceptionCase.ResolvedAtUtc);
         Assert.Equal(2, await invoiceReadContext.MatchResults.CountAsync(cancellationToken));
@@ -375,7 +416,7 @@ public sealed class AppHostTests
             Assert.Equal(persistedExceptionCase.Id, queueItem.Id);
             Assert.Equal(VendorBootstrapper.AtlasName, queueItem.VendorName);
             Assert.Equal(nameof(MatchExceptionCode.PriceVariance), queueItem.Type);
-            Assert.Equal(nameof(ExceptionCaseStatus.New), queueItem.Status);
+            Assert.Equal(nameof(ExceptionCaseStatus.Open), queueItem.Status);
             Assert.Equal(nameof(ExceptionSeverity.High), queueItem.Severity);
             Assert.Equal(bootstrapUser.Id, queueItem.AssignedToUserId);
 
@@ -432,14 +473,6 @@ public sealed class AppHostTests
                 cancellationToken);
             Assert.Single(history);
         }
-
-        persistedExceptionCase.TransitionTo(
-            ExceptionCaseStatus.Analyzing,
-            persistedExceptionCase.OpenedAtUtc);
-        persistedExceptionCase.TransitionTo(
-            ExceptionCaseStatus.Open,
-            persistedExceptionCase.OpenedAtUtc);
-        await invoiceReadContext.SaveChangesAsync(cancellationToken);
 
         var unauthorizedServices = new ServiceCollection();
         unauthorizedServices.AddLogging();

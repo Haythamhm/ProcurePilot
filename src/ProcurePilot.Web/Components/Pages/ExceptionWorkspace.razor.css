@@ -1,3 +1,33 @@
+.case-ai-analysis {
+    background: var(--pp-surface);
+    border: 1px solid var(--pp-muted);
+    border-radius: 1rem;
+    margin: 1rem 0;
+    padding: 1.25rem;
+}
+
+.case-ai-analysis > header {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.case-ai-analysis h2 { margin: 0; }
+.ai-disclaimer { color: var(--pp-primary); margin: 0.75rem 0; }
+.ai-analysis-content { display: grid; gap: 0.75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ai-analysis-content article { border-left: 3px solid var(--pp-primary); padding: 0.5rem 0.75rem; }
+.ai-analysis-content h3 { font-size: 0.95rem; margin: 0 0 0.35rem; }
+.ai-analysis-content p { margin: 0; }
+.ai-analysis-content small { color: var(--pp-primary); grid-column: 1 / -1; }
+.ai-analysis-unavailable { background: var(--pp-surface); border: 1px solid var(--pp-muted); border-radius: 0.65rem; padding: 0.8rem 1rem; }
+.ai-analysis-unavailable p { margin: 0.35rem 0 0; }
+
+@media (max-width: 640px) {
+    .case-ai-analysis > header { align-items: flex-start; flex-direction: column; }
+    .ai-analysis-content { grid-template-columns: 1fr; }
+}
+
 .exception-breadcrumb {
     align-items: center;
     color: var(--pp-primary);

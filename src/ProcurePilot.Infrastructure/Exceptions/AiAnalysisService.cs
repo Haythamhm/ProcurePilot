@@ -10,7 +10,7 @@ using ProcurePilot.Infrastructure.Persistence;
 namespace ProcurePilot.Infrastructure.Exceptions;
 
 public sealed class AiAnalysisService(
-    ProcurePilotDbContext dbContext,
+    DbContextOptions<ProcurePilotDbContext> dbContextOptions,
     ITenantContext tenantContext,
     IExceptionWorkspaceQueries workspaceQueries,
     IExceptionExplanationService? explanationService = null,
@@ -27,6 +27,7 @@ public sealed class AiAnalysisService(
             return null;
         }
 
+        await using var dbContext = CreateDbContext();
         var analysis = await dbContext.AiAnalyses
             .AsNoTracking()
             .Where(a => a.ExceptionCaseId == exceptionCaseId)
@@ -45,6 +46,7 @@ public sealed class AiAnalysisService(
             return [];
         }
 
+        await using var dbContext = CreateDbContext();
         var analyses = await dbContext.AiAnalyses
             .AsNoTracking()
             .Where(a => a.ExceptionCaseId == exceptionCaseId)
@@ -130,6 +132,7 @@ public sealed class AiAnalysisService(
                 now);
         }
 
+        await using var dbContext = CreateDbContext();
         dbContext.AiAnalyses.Add(analysis);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -165,4 +168,7 @@ public sealed class AiAnalysisService(
             analysis.DurationMs,
             analysis.ErrorMessage,
             analysis.CreatedAtUtc);
+
+    private ProcurePilotDbContext CreateDbContext() =>
+        new(dbContextOptions, tenantContext);
 }

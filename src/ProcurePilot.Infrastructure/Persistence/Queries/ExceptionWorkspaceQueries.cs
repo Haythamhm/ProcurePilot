@@ -1,11 +1,14 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using ProcurePilot.Application.Exceptions;
+using ProcurePilot.Application.Tenancy;
 using ProcurePilot.Domain.Exceptions;
 
 namespace ProcurePilot.Infrastructure.Persistence.Queries;
 
-internal sealed class ExceptionWorkspaceQueries(ProcurePilotDbContext dbContext)
+internal sealed class ExceptionWorkspaceQueries(
+    DbContextOptions<ProcurePilotDbContext> dbContextOptions,
+    ITenantContext tenantContext)
     : IExceptionWorkspaceQueries
 {
     public async Task<ExceptionWorkspaceReadModel?> GetAsync(
@@ -16,6 +19,8 @@ internal sealed class ExceptionWorkspaceQueries(ProcurePilotDbContext dbContext)
         {
             return null;
         }
+
+        await using var dbContext = new ProcurePilotDbContext(dbContextOptions, tenantContext);
 
         var projection = await (
                 from exceptionCase in dbContext.ExceptionCases.AsNoTracking()

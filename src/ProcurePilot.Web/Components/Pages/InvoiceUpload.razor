@@ -1,7 +1,11 @@
 @page "/invoices/upload"
 @using System.Security.Claims
 @using ProcurePilot.Application.Invoices.Upload
+@using ProcurePilot.Application.Invoices.Extraction
+@using ProcurePilot.Application.Invoices.Review
 @inject IInvoiceUploadService UploadService
+@inject IInvoiceExtractor InvoiceExtractor
+@inject IInvoiceExtractionReviewService ReviewService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<InvoiceUpload> Logger
 
@@ -31,8 +35,12 @@
         <div class="upload-result" role="status" aria-live="polite">
             <span class="result-symbol" aria-hidden="true">✓</span>
             <div>
-                <strong>Invoice queued for processing</strong>
+                <strong>@(_extractionFailed ? "Invoice stored — review can continue manually" : "Invoice stored and extracted")</strong>
                 <p>@_result.FileName (@FormatSize(_result.SizeBytes)) was stored securely. Reference: @_result.InvoiceId</p>
+                @if (_extractionFailed)
+                {
+                    <p class="upload-extraction-note">Automatic extraction is unavailable right now. You can enter and review the invoice details manually.</p>
+                }
                 <a class="result-action" href="invoices/@_result.InvoiceId/review">
                     Review extracted data <span aria-hidden="true">→</span>
                 </a>
@@ -87,6 +95,7 @@
     private InvoiceUploadResult? _result;
     private string? _errorMessage;
     private bool _isUploading;
+    private bool _extractionFailed;
 
     private void SelectFile(InputFileChangeEventArgs eventArgs)
     {
@@ -105,6 +114,11 @@
         _errorMessage = null;
         try
         {
+            if (_selectedFile.Size is <= 0 or > InvoiceUploadLimits.MaxFileSizeBytes)
+            {
+                throw new InvoiceUploadValidationException("The document must be between 1 byte and 10 MB.");
+            }
+
             var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var userIdValue = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!Guid.TryParse(userIdValue, out var userId))
@@ -112,14 +126,30 @@
                 throw new InvalidOperationException("The authenticated user identifier is missing.");
             }
 
-            await using var stream = _selectedFile.OpenReadStream(InvoiceUploadLimits.MaxFileSizeBytes);
+            await using var source = _selectedFile.OpenReadStream(InvoiceUploadLimits.MaxFileSizeBytes);
+            await using var buffered = new MemoryStream((int)_selectedFile.Size);
+            await source.CopyToAsync(buffered);
+            var content = buffered.ToArray();
+            await using var stream = new MemoryStream(content, writable: false);
             _result = await UploadService.UploadAsync(
                 new InvoiceUploadRequest(
                     stream,
                     _selectedFile.Name,
                     _selectedFile.ContentType,
-                    _selectedFile.Size),
+                    content.LongLength),
                 userId);
+
+            try
+            {
+                var extraction = await InvoiceExtractor.ExtractAsync(
+                    new InvoiceExtractionRequest(content, _selectedFile.ContentType));
+                await ReviewService.SaveExtractionAsync(_result.InvoiceId, extraction);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                Logger.LogWarning(exception, "Extraction unavailable for uploaded invoice {InvoiceId}.", _result.InvoiceId);
+                _extractionFailed = true;
+            }
         }
         catch (InvoiceUploadValidationException exception)
         {

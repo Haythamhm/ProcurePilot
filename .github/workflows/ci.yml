@@ -48,5 +48,8 @@ jobs:
       - name: Build
         run: dotnet build ProcurePilot.slnx --configuration Release --no-restore
 
+      - name: Install Playwright Chromium
+        run: pwsh tests/ProcurePilot.E2ETests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
       - name: Test
         run: dotnet test ProcurePilot.slnx --configuration Release --no-build -m:1 --logger "console;verbosity=normal"

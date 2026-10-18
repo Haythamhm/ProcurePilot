@@ -8,7 +8,7 @@ namespace ProcurePilot.Web.Identity;
 
 public sealed class ActiveTenantAuthorizationHandler(
     ITenantContext tenantContext,
-    ProcurePilotDbContext dbContext)
+    DbContextOptions<ProcurePilotDbContext> dbContextOptions)
     : AuthorizationHandler<ActiveTenantRequirement>
 {
     protected override async Task HandleRequirementAsync(
@@ -20,6 +20,7 @@ public sealed class ActiveTenantAuthorizationHandler(
             return;
         }
 
+        await using var dbContext = new ProcurePilotDbContext(dbContextOptions, tenantContext);
         var tenantIsActive = await dbContext.Tenants
             .IgnoreQueryFilters()
             .AnyAsync(tenant => tenant.Id == tenantId && tenant.Status == TenantStatus.Active);

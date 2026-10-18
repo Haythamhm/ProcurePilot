@@ -2,7 +2,11 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Security.Claims
 @using ProcurePilot.Application.Invoices.Review
+@using ProcurePilot.Application.Matching
+@using ProcurePilot.Domain.Matching
 @inject IInvoiceExtractionReviewService ReviewService
+@inject IInvoiceMatchingWorkspaceQueries MatchingQueries
+@inject IPriceVarianceMatchingService MatchingService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<InvoiceExtractionReview> Logger
 
@@ -42,15 +46,97 @@ else if (_review is null)
 }
 else if (_review.IsConfirmed)
 {
-    <SystemState Eyebrow="Invoice ingestion"
-                 Marker="✓"
-                 Title="Extraction confirmed"
-                 Description="The structured invoice data is ready for deterministic matching.">
-        <Details>
-            <p><strong>@_review.OriginalFileName</strong> · Invoice @_review.Extraction.InvoiceNumber.Value</p>
-        </Details>
-        <Actions><a class="btn btn-primary" href="/">Return to dashboard</a></Actions>
-    </SystemState>
+    <header class="review-heading">
+        <div><p class="eyebrow">Invoice ingestion · Step 3 of 3</p><h1>Match invoice lines</h1>
+            <p class="page-summary">Select the corresponding purchase-order line and active price rule. ProcurePilot calculates the variance deterministically.</p></div>
+        <span class="document-chip"><small>Reviewed invoice</small><strong>@_review.Extraction.InvoiceNumber.Value · @_review.OriginalFileName</strong></span>
+    </header>
+
+    @if (_matchingWorkspace is null)
+    {
+        <SystemState Eyebrow="Deterministic matching" Marker="!" Title="Matching is unavailable"
+                     Description="The reviewed invoice could not be loaded for matching in the active workspace.">
+            <Actions><a class="btn btn-outline-secondary" href="/">Return to dashboard</a></Actions>
+        </SystemState>
+    }
+    else if (_matchingWorkspace.InvoiceLines.Count == 0 || _matchingWorkspace.PurchaseOrders.Count == 0 || _matchingWorkspace.Rules.Count == 0)
+    {
+        <SystemState Eyebrow="Deterministic matching" Marker="!" Title="Matching prerequisites are missing"
+                     Description="Matching requires reviewed invoice lines, a purchase order for the selected supplier, and an active price-variance rule. No match was created.">
+            <Details>
+                <ul>
+                    <li>Reviewed invoice lines: @(_matchingWorkspace.InvoiceLines.Count == 0 ? "missing" : "available")</li>
+                    <li>Supplier purchase orders: @(_matchingWorkspace.PurchaseOrders.Count == 0 ? "missing" : "available")</li>
+                    <li>Active price-variance rules: @(_matchingWorkspace.Rules.Count == 0 ? "missing" : "available")</li>
+                </ul>
+            </Details>
+        </SystemState>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_matchMessage))
+        {
+            <div class="review-message" role="status" aria-live="polite">
+                <strong>@_matchMessage</strong>
+                @if (_matchOutcome?.ExceptionCaseId is { } exceptionId)
+                {
+                    <a class="result-action" href="/exceptions/@exceptionId">Open exception workspace →</a>
+                }
+            </div>
+        }
+        <EditForm Model="_matchForm" OnSubmit="EvaluateMatchAsync" FormName="invoice-price-match">
+            <section class="review-panel matching-panel" aria-labelledby="matching-title">
+                <div class="panel-heading"><div><p class="card-kicker">Human-selected references</p><h2 id="matching-title">Price variance check</h2></div></div>
+                <div class="field-grid">
+                    <div class="review-field">
+                        <label for="match-invoice-line">Invoice line</label>
+                        <InputSelect id="match-invoice-line" class="form-control" @bind-Value="_matchForm.InvoiceLineId">
+                            <option value="@Guid.Empty">Select an invoice line</option>
+                            @foreach (var line in _matchingWorkspace.InvoiceLines)
+                            {
+                                <option value="@line.Id">#@line.LineNumber · @line.Description · @line.UnitPrice.ToString("C")</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="review-field">
+                        <label for="match-po-line">Purchase-order line</label>
+                        <InputSelect id="match-po-line" class="form-control" @bind-Value="_matchForm.PurchaseOrderLineId">
+                            <option value="@Guid.Empty">Select a purchase-order line</option>
+                            @foreach (var order in _matchingWorkspace.PurchaseOrders)
+                            {
+                                <optgroup label="@order.Number · @order.VendorName · @order.Currency">
+                                    @foreach (var line in order.Lines)
+                                    {
+                                        <option value="@line.Id">#@line.LineNumber · @line.Description · @line.UnitPrice.ToString("C")</option>
+                                    }
+                                </optgroup>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="review-field">
+                        <label for="match-rule">Active rule</label>
+                        <InputSelect id="match-rule" class="form-control" @bind-Value="_matchForm.MatchingRuleId">
+                            <option value="@Guid.Empty">Select a rule</option>
+                            @foreach (var rule in _matchingWorkspace.Rules)
+                            {
+                                <option value="@rule.Id">Version @rule.Version · tolerance @rule.AllowedTolerancePercent%</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(_matchError))
+                {
+                    <div class="review-message" role="alert">@_matchError</div>
+                }
+                <footer class="review-actions">
+                    <p>The calculation uses the selected persisted rule. Re-running a completed match is disabled to avoid duplicate evaluations.</p>
+                    <button class="btn btn-primary" type="submit" disabled="@(_isMatching || _matchOutcome is not null)">
+                        @(_isMatching ? "Evaluating…" : "Evaluate price variance")
+                    </button>
+                </footer>
+            </section>
+        </EditForm>
+    }
 }
 else
 {
@@ -220,6 +306,12 @@ else
     private bool _loadFailed;
     private bool _isSaving;
     private string? _errorMessage;
+    private InvoiceMatchingWorkspaceReadModel? _matchingWorkspace;
+    private readonly MatchFormModel _matchForm = new();
+    private PriceVarianceMatchOutcome? _matchOutcome;
+    private bool _isMatching;
+    private string? _matchError;
+    private string? _matchMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -231,6 +323,10 @@ else
             if (_review is not null)
             {
                 _form = ReviewFormModel.From(_review);
+                if (_review.IsConfirmed)
+                {
+                    _matchingWorkspace = await MatchingQueries.GetAsync(InvoiceId);
+                }
             }
         }
         catch (Exception exception)
@@ -280,6 +376,7 @@ else
                     _form.ConfirmLowConfidenceFields),
                 reviewerId);
             _review = await ReviewService.GetAsync(InvoiceId);
+            _matchingWorkspace = await MatchingQueries.GetAsync(InvoiceId);
         }
         catch (InvoiceReviewValidationException exception)
         {
@@ -293,6 +390,43 @@ else
         finally
         {
             _isSaving = false;
+        }
+    }
+
+    private async Task EvaluateMatchAsync()
+    {
+        if (_isMatching || _matchOutcome is not null || _matchForm.InvoiceLineId == Guid.Empty
+            || _matchForm.PurchaseOrderLineId == Guid.Empty || _matchForm.MatchingRuleId == Guid.Empty)
+        {
+            _matchError = "Select an invoice line, purchase-order line, and active rule.";
+            return;
+        }
+
+        _isMatching = true;
+        _matchError = null;
+        try
+        {
+            _matchOutcome = await MatchingService.EvaluateAsync(new PriceVarianceMatchCommand(
+                _matchForm.InvoiceLineId,
+                _matchForm.PurchaseOrderLineId,
+                _matchForm.MatchingRuleId));
+            _matchMessage = _matchOutcome.Status is MatchResultStatus.Passed
+                ? "Match passed. No price-variance exception was created."
+                : "Price variance exceeded the selected rule tolerance. An exception was created for human review.";
+        }
+        catch (InvalidOperationException exception)
+        {
+            Logger.LogWarning(exception, "Price-variance match was rejected for invoice {InvoiceId}.", InvoiceId);
+            _matchError = exception.Message;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Price-variance match failed for invoice {InvoiceId}.", InvoiceId);
+            _matchError = "The match could not be evaluated. Confirm the selections and try again.";
+        }
+        finally
+        {
+            _isMatching = false;
         }
     }
 
@@ -388,5 +522,12 @@ else
         public string Description { get; set; } = string.Empty;
         public decimal Quantity { get; set; }
         public decimal UnitPrice { get; set; }
+    }
+
+    private sealed class MatchFormModel
+    {
+        public Guid InvoiceLineId { get; set; }
+        public Guid PurchaseOrderLineId { get; set; }
+        public Guid MatchingRuleId { get; set; }
     }
 }
