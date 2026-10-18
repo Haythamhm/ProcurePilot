@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Testing" Version="13.5.4" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -19,6 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\ProcurePilot.AppHost\ProcurePilot.AppHost.csproj" />
+    <ProjectReference Include="..\..\src\ProcurePilot.Infrastructure\ProcurePilot.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\ProcurePilot.Web\ProcurePilot.Web.csproj" />
   </ItemGroup>
 
