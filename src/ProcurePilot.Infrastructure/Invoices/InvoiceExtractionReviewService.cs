@@ -119,7 +119,9 @@ internal sealed class InvoiceExtractionReviewService(
         var tenantId = tenantContext.RequireTenantId();
         await using var dbContext = CreateDbContext();
         var reviewerExists = await dbContext.Users
-            .AnyAsync(user => user.Id == reviewedByUserId, cancellationToken);
+            .AnyAsync(
+                user => user.Id == reviewedByUserId && user.TenantId == tenantId,
+                cancellationToken);
         if (!reviewerExists)
         {
             throw new InvoiceReviewValidationException(

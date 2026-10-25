@@ -131,6 +131,16 @@ public sealed class AppHostTests
         dbContext.Tenants.Add(otherTenant);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        var crossTenantReviewer = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            TenantId = otherTenant.Id,
+            UserName = $"reviewer-{Guid.NewGuid():N}@integration.local",
+            DisplayName = "Other Tenant Reviewer"
+        };
+        dbContext.Users.Add(crossTenantReviewer);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         await using var bootstrapTenantContext = new ProcurePilotDbContext(
             options,
             new TestTenantContext(bootstrapTenant.Id));
@@ -700,6 +710,15 @@ public sealed class AppHostTests
                 120m,
                 [new ConfirmInvoiceLineCommand(1, "Control module", 1m, 100m)],
                 ConfirmLowConfidenceFields: false);
+            var crossTenantReviewerError = await Assert.ThrowsAsync<InvoiceReviewValidationException>(() =>
+                reviewService.ConfirmAsync(
+                    unconfirmedCommand with { ConfirmLowConfidenceFields = true },
+                    crossTenantReviewer.Id,
+                    cancellationToken));
+            Assert.Equal(
+                "The reviewer does not belong to the active workspace.",
+                crossTenantReviewerError.Message);
+
             await Assert.ThrowsAsync<InvoiceReviewValidationException>(() =>
                 reviewService.ConfirmAsync(unconfirmedCommand, bootstrapUser.Id, cancellationToken));
 
@@ -747,6 +766,10 @@ public sealed class AppHostTests
         Assert.Empty(await otherTenantContext.MatchingRules.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.MatchResults.ToListAsync(cancellationToken));
         Assert.Empty(await otherTenantContext.ExceptionCases.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.ExceptionCaseEvidences.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.AiAnalyses.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.Resolutions.ToListAsync(cancellationToken));
+        Assert.Empty(await otherTenantContext.AuditEvents.ToListAsync(cancellationToken));
         Assert.DoesNotContain(
             uploadedInvoiceId,
             await otherTenantContext.InvoiceExtractionSnapshots
